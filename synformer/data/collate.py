@@ -42,3 +42,17 @@ def apply_collate(
     transpose = {k: [d[k] for d in data_list] for k in spec.keys()}
     batch = {k: spec[k](transpose[k], max_size) for k in spec.keys()}
     return batch
+
+
+def collate_3d_features(tensors: list[torch.Tensor], max_size: int | None = None) -> torch.Tensor:
+    """Collate 3D feature tensors (for shape data)"""
+    if not tensors:
+        return torch.empty(0)
+    return torch.stack(tensors)
+
+
+def collate_2d_features(tensors: list[torch.Tensor], max_size: int | None = None) -> torch.Tensor:
+    """Collate 2D feature tensors (for shape patches)"""
+    if not tensors:
+        return torch.empty(0)
+    return torch.stack(tensors)

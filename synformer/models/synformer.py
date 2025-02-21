@@ -162,6 +162,7 @@ class Synformer(nn.Module):
     def __init__(self, cfg):
         super().__init__()
         self.encoder = get_encoder(cfg.encoder_type, cfg.encoder)
+        print(f"Initialized Synformer with encoder_type: {cfg.encoder_type}")
         decoder_kwargs = {}
         if "decoder_only" not in cfg.decoder and cfg.encoder_type == "none":
             decoder_kwargs["decoder_only"] = True

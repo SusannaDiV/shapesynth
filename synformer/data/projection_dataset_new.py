@@ -18,6 +18,8 @@ from .collate import (
     collate_2d_tokens,
     collate_padding_masks,
     collate_tokens,
+    collate_3d_features,
+    collate_2d_features,
 )
 from .common import ProjectionBatch, ProjectionData, create_data
 
@@ -41,6 +43,17 @@ class Collater:
             "reactant_fps": collate_1d_features,
             "token_padding_mask": collate_padding_masks,
         }
+ 
+        self.spec_desert = {
+            "input_frag_idx": collate_tokens,
+            "input_frag_idx_mask": collate_padding_masks,
+            "input_frag_trans": collate_tokens,
+            "input_frag_trans_mask": collate_padding_masks,
+            "input_frag_r_mat": collate_tokens,
+            "input_frag_r_mat_mask": collate_padding_masks,
+            "shape": collate_3d_features,
+            "shape_patches": collate_2d_features,
+        }
 
     def __call__(self, data_list: list[ProjectionData]) -> ProjectionBatch:
         data_list_t = cast(list[dict[str, torch.Tensor]], data_list)
@@ -48,6 +61,7 @@ class Collater:
             **apply_collate(self.spec_atoms, data_list_t, max_size=self.max_num_atoms),
             **apply_collate(self.spec_smiles, data_list_t, max_size=self.max_smiles_len),
             **apply_collate(self.spec_tokens, data_list_t, max_size=self.max_num_tokens),
+            **apply_collate(self.spec_desert, data_list_t, max_size=self.max_smiles_len),
             "mol_seq": [d["mol_seq"] for d in data_list],
             "rxn_seq": [d["rxn_seq"] for d in data_list],
         }

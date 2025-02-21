@@ -36,7 +36,7 @@ python scripts/preprocess.py --model-config your_config_file.yml
 ```
 to obtain the processed data file (fpindex.pkl and matrix.pkl). Then one can train the model with:
 ```bash
-python scripts/train.py configs/dev_smiles_diffusion.yml
+python scripts/train.py configs/dev_smiles_diffusion.yml --debug
 ```
 Please adjust the batch size and number of trainig epoches according to your computational resources.
 
