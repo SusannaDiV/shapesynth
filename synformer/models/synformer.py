@@ -12,13 +12,11 @@ from synformer.chem.stack import Stack
 from synformer.data.common import ProjectionBatch, TokenType
 from synformer.models.encoder import get_encoder
 from synformer.models.decoder import Decoder
-from synformer.models.head import ClassifierHead, get_fingerprint_head
 
 from .classifier_head import ClassifierHead
 from .decoder import Decoder
-from .encoder import get_encoder
+from .encoder import get_encoder, ShapeEncoder
 from .fingerprint_head import ReactantRetrievalResult, get_fingerprint_head
-from .shape_encoder import ShapeEncoder
 
 
 @dataclasses.dataclass
@@ -168,21 +166,24 @@ class Synformer(nn.Module):
         
         if cfg.encoder_type == "shape_pretrained":
             print("\nLoading pretrained encoder...")
-            self.pretrained_encoder = get_encoder("shape", cfg.encoder)
+            # Initialize encoder on CPU
+            self.pretrained_encoder = ShapeEncoder.from_pretrained(
+                cfg.encoder.pretrained,
+                device='cpu'  # Force CPU initialization
+            )
+            self.pretrained_encoder.eval()  # Set to eval mode
             self.encoder = None
         else:
             self.encoder = get_encoder(cfg.encoder_type, cfg.encoder)
         
         print(f"Initialized Synformer with encoder_type: {cfg.encoder_type}")
         
-        # Force decoder to match encoder dimension
         cfg.decoder.d_model = 1024  # Override the 768 from config
-        
         decoder_kwargs = {}
         if "decoder_only" not in cfg.decoder and cfg.encoder_type == "none":
             decoder_kwargs["decoder_only"] = True
         self.decoder = Decoder(**cfg.decoder, **decoder_kwargs)
-        self.d_model: int = 1024  # Force to match encoder
+        self.d_model: int = 1024
         
         # Remove projection since we're matching dimensions
         self.token_head = ClassifierHead(self.d_model, max(TokenType) + 1)
@@ -192,24 +193,33 @@ class Synformer(nn.Module):
     def encode(self, batch: ProjectionBatch):
         # If we have a pretrained encoder, use it on the batch first
         if hasattr(self, 'pretrained_encoder'):
-            print("Using pretrained encoder")
             with torch.no_grad():
-                # Collect all the required inputs for the pretrained encoder
+                device = next(self.decoder.parameters()).device
+                
+                # Ensure shape_patches is in the batch
+                if 'shape_patches' not in batch:
+                    raise ValueError("shape_patches missing from batch")
+                
                 encoder_inputs = {
-                    'net_input': {  # Match the format expected by ShapeEncoder
-                        "shape": batch["shape"],
-                        "shape_patches": batch["shape_patches"],
-                        "input_frag_idx": batch["input_frag_idx"],
-                        "input_frag_idx_mask": batch["input_frag_idx_mask"],
-                        "input_frag_trans": batch["input_frag_trans"],
-                        "input_frag_trans_mask": batch["input_frag_trans_mask"],
-                        "input_frag_r_mat": batch["input_frag_r_mat"],
-                        "input_frag_r_mat_mask": batch["input_frag_r_mat_mask"],
-                    }
+                    'shape': batch['shape'].to(device),
+                    'shape_patches': batch['shape_patches'].to(device),
+                    'input_frag_idx': batch['input_frag_idx'].to(device),
+                    'input_frag_idx_mask': batch['input_frag_idx_mask'].to(device),
+                    'input_frag_trans': batch['input_frag_trans'].to(device),
+                    'input_frag_trans_mask': batch['input_frag_trans_mask'].to(device),
+                    'input_frag_r_mat': batch['input_frag_r_mat'].to(device),
+                    'input_frag_r_mat_mask': batch['input_frag_r_mat_mask'].to(device)
                 }
+                
+                # Run encoder and move output to GPU
                 encoder_output = self.pretrained_encoder(encoder_inputs)
-                code = encoder_output[0]
-                padding_mask = encoder_output[1]
+                code = encoder_output[0].to(device)
+                padding_mask = encoder_output[1].to(device)
+                
+                # Ensure output has correct shape for decoder
+                if code.dim() == 3 and code.size(0) != padding_mask.size(0):
+                    code = code.transpose(0, 1)
+                
                 return code, padding_mask, {}
 
         # Otherwise use the regular encoder
