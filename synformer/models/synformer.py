@@ -196,7 +196,6 @@ class Synformer(nn.Module):
             with torch.no_grad():
                 device = next(self.decoder.parameters()).device
                 
-                # Ensure shape_patches is in the batch
                 if 'shape_patches' not in batch:
                     raise ValueError("shape_patches missing from batch")
                 
@@ -210,19 +209,14 @@ class Synformer(nn.Module):
                     'input_frag_r_mat': batch['input_frag_r_mat'].to(device),
                     'input_frag_r_mat_mask': batch['input_frag_r_mat_mask'].to(device)
                 }
-                
-                # Run encoder and move output to GPU
                 encoder_output = self.pretrained_encoder(encoder_inputs)
                 code = encoder_output[0].to(device)
                 padding_mask = encoder_output[1].to(device)
-                
-                # Ensure output has correct shape for decoder
                 if code.dim() == 3 and code.size(0) != padding_mask.size(0):
                     code = code.transpose(0, 1)
                 
                 return code, padding_mask, {}
 
-        # Otherwise use the regular encoder
         encoder_out = self.encoder(batch)
         code = encoder_out[0]
         padding_mask = encoder_out[1]
