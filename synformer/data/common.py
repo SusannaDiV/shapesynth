@@ -846,9 +846,7 @@ def create_data(
         print("\nLoading pretrained encoder...")
         pretrained_encoder = ShapeEncoder.from_pretrained(pretrained_model_path)
         with torch.no_grad():
-            print("Running pretrained encoder forward pass...")
             encoder_output = pretrained_encoder(desert_batch['net_input']['shape_patches'])
-            print(f"Encoder output shape: {encoder_output[0].shape}")
         desert_batch['net_input']['shape_embeddings'] = encoder_output[0]
     
     desert_data = {

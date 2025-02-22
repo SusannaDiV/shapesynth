@@ -179,10 +179,11 @@ class Synformer(nn.Module):
         self.fingerprint_head = get_fingerprint_head(cfg.fingerprint_head_type, cfg.fingerprint_head)
 
     def encode(self, batch: ProjectionBatch):
+        '''
         for k, v in batch.items():
             if isinstance(v, torch.Tensor):
                 print(f"{k}: {v.shape}")
-        
+        '''
         # Get encoder output
         encoder_out = self.encoder(batch)
         
@@ -194,10 +195,6 @@ class Synformer(nn.Module):
         # Force to batch-first if needed
         if code.size(0) == padding_mask.size(1):
             code = code.transpose(0, 1)
-            print("Transposed code to batch-first format")
-        
-        print(f"\nEncoder output: shape={code.shape}, device={code.device}")
-        assert code.size(-1) == 1024, f"Expected 1024 features, got {code.size(-1)}"
             
         return code, padding_mask, loss_dict
 

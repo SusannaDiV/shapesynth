@@ -538,10 +538,6 @@ class ShapePretrainingEncoder(TransformerEncoder):
         else:
             src = batch
         
-        print(f"\nShapePretrainingEncoder input:")
-        print(f"Type: {type(src)}")
-        print(f"Shape: {src.shape}")
-        print(f"Dtype: {src.dtype}")
         
         # Ensure float dtype
         if src.dtype != torch.float32:
@@ -551,7 +547,6 @@ class ShapePretrainingEncoder(TransformerEncoder):
         
         # Project patches to model dimension
         x = self._patch_ffn(src)  # [batch, seq, dim]
-        print(f"After patch_ffn: {x.shape}")
         
         # Rest of the forward pass...
         if self._embed_scale is not None:
@@ -576,7 +571,6 @@ class ShapePretrainingEncoder(TransformerEncoder):
         else:
             encoder_out = x, src_padding_mask
         
-        print("Passed encoder")
 
         return encoder_out
 
