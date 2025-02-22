@@ -529,19 +529,31 @@ class ShapePretrainingEncoder(TransformerEncoder):
         super().build(embed, special_tokens)
     
     def _forward(self, batch: dict):
-        # Check required fields are present
-        if "input_frag_idx" not in batch:
-            raise ValueError("desert_input_frag_idx must be in batch")
+        """Forward pass for the encoder"""
+        # Extract shape patches from batch
+        if isinstance(batch, dict):
+            if "shape_patches" not in batch:
+                raise ValueError("shape_patches must be in batch")
+            src = batch["shape_patches"]
+        else:
+            src = batch
         
-        # Get input tensors from batch
-        src = batch["input_frag_idx"]  # This is the tensor we want to process
-        src_key_padding_mask = batch["input_frag_idx_mask"]
+        print(f"\nShapePretrainingEncoder input:")
+        print(f"Type: {type(src)}")
+        print(f"Shape: {src.shape}")
+        print(f"Dtype: {src.dtype}")
         
-        # Now we can get the batch size and sequence length
+        # Ensure float dtype
+        if src.dtype != torch.float32:
+            src = src.float()
+        
         bz, sl = src.size(0), src.size(1)
         
-        # Rest of the forward pass
-        x = self._patch_ffn(src)
+        # Project patches to model dimension
+        x = self._patch_ffn(src)  # [batch, seq, dim]
+        print(f"After patch_ffn: {x.shape}")
+        
+        # Rest of the forward pass...
         if self._embed_scale is not None:
             x = x * self._embed_scale
         if self._pos_embed is not None:
@@ -554,7 +566,7 @@ class ShapePretrainingEncoder(TransformerEncoder):
         src_padding_mask = torch.zeros((bz, sl), dtype=torch.bool).to(x.device)
         x = x.transpose(0, 1)
         for layer in self._layers:
-            x = layer(x, src_key_padding_mask=src_key_padding_mask)
+            x = layer(x, src_key_padding_mask=src_padding_mask)
         
         if self._norm is not None:
             x = self._norm(x)

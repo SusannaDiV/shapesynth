@@ -163,18 +163,43 @@ class Synformer(nn.Module):
         super().__init__()
         self.encoder = get_encoder(cfg.encoder_type, cfg.encoder)
         print(f"Initialized Synformer with encoder_type: {cfg.encoder_type}")
+        
+        # Force decoder to match encoder dimension
+        cfg.decoder.d_model = 1024  # Override the 768 from config
+        
         decoder_kwargs = {}
         if "decoder_only" not in cfg.decoder and cfg.encoder_type == "none":
             decoder_kwargs["decoder_only"] = True
         self.decoder = Decoder(**cfg.decoder, **decoder_kwargs)
-        self.d_model: int = self.encoder.dim
-
+        self.d_model: int = 1024  # Force to match encoder
+        
+        # Remove projection since we're matching dimensions
         self.token_head = ClassifierHead(self.d_model, max(TokenType) + 1)
         self.reaction_head = ClassifierHead(self.d_model, cfg.decoder.num_reaction_classes)
         self.fingerprint_head = get_fingerprint_head(cfg.fingerprint_head_type, cfg.fingerprint_head)
 
     def encode(self, batch: ProjectionBatch):
-        return self.encoder(batch)
+        for k, v in batch.items():
+            if isinstance(v, torch.Tensor):
+                print(f"{k}: {v.shape}")
+        
+        # Get encoder output
+        encoder_out = self.encoder(batch)
+        
+        # Extract components
+        code = encoder_out[0]  # Should be [8, 343, 1024]
+        padding_mask = encoder_out[1]  # Should be [8, 343]
+        loss_dict = encoder_out[2] if len(encoder_out) > 2 else {}
+        
+        # Force to batch-first if needed
+        if code.size(0) == padding_mask.size(1):
+            code = code.transpose(0, 1)
+            print("Transposed code to batch-first format")
+        
+        print(f"\nEncoder output: shape={code.shape}, device={code.device}")
+        assert code.size(-1) == 1024, f"Expected 1024 features, got {code.size(-1)}"
+            
+        return code, padding_mask, loss_dict
 
     def get_loss(
         self,
