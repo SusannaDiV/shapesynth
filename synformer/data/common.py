@@ -473,6 +473,11 @@ class SingleSmilesProcessor:
         frags, _ = self.fragmenizer.fragmenize(mol)
         frags = Chem.GetMolFrags(frags, asMols=True)
         
+        if not frags:
+            print(f"Warning: No fragments generated for SMILES {smiles}")
+            return {'tree_list': [], 'mol': mol, 'frag_list': []}
+            
+        
         # Process fragments
         frags_list = []
         start_frag_idx = []
@@ -841,7 +846,7 @@ def create_data(
     
     encoder = ShapePretrainingTaskNoRegression(vocab_path=vocab_path)
     desert_batch = encoder.process_samples([processed_data], training=True)
- 
+    '''
     if pretrained_model_path:
         print("\nLoading pretrained encoder...")
         pretrained_encoder = ShapeEncoder.from_pretrained(pretrained_model_path)
@@ -853,6 +858,7 @@ def create_data(
         k: (v[0] if isinstance(v, torch.Tensor) and v.dim() > 0 else v)
         for k, v in desert_batch["net_input"].items()
     }
+    '''
     '''
     print("\nAfter extraction, desert_data keys and shapes:")
     for k, v in desert_data.items():

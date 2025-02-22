@@ -43,7 +43,7 @@ def apply_collate(
     batch = {k: spec[k](transpose[k], max_size) for k in spec.keys()}
     return batch
 
-
+# do we need them?
 def collate_3d_features(tensors: list[torch.Tensor], max_size: int | None = None) -> torch.Tensor:
     """Collate 3D feature tensors (for shape data)"""
     if not tensors:

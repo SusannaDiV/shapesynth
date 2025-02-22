@@ -15,6 +15,7 @@ from .classifier_head import ClassifierHead
 from .decoder import Decoder
 from .encoder import get_encoder
 from .fingerprint_head import ReactantRetrievalResult, get_fingerprint_head
+from .shape_encoder import ShapeEncoder
 
 
 @dataclasses.dataclass
@@ -161,7 +162,14 @@ class GenerateResult:
 class Synformer(nn.Module):
     def __init__(self, cfg):
         super().__init__()
-        self.encoder = get_encoder(cfg.encoder_type, cfg.encoder)
+        
+        if cfg.encoder_type == "shape_pretrained":
+            print("\nLoading pretrained encoder...")
+            self.pretrained_encoder = ShapeEncoder.from_pretrained(cfg.encoder.pretrained)
+            self.encoder = None  # We don't need the regular encoder
+        else:
+            self.encoder = get_encoder(cfg.encoder_type, cfg.encoder)
+        
         print(f"Initialized Synformer with encoder_type: {cfg.encoder_type}")
         
         # Force decoder to match encoder dimension
@@ -179,20 +187,34 @@ class Synformer(nn.Module):
         self.fingerprint_head = get_fingerprint_head(cfg.fingerprint_head_type, cfg.fingerprint_head)
 
     def encode(self, batch: ProjectionBatch):
-        '''
-        for k, v in batch.items():
-            if isinstance(v, torch.Tensor):
-                print(f"{k}: {v.shape}")
-        '''
-        # Get encoder output
+        # If we have a pretrained encoder, use it on the batch first
+        if hasattr(self, 'pretrained_encoder'):
+            print("Using pretrained encoder")
+            with torch.no_grad():
+                # Collect all the required inputs for the pretrained encoder
+                encoder_inputs = {
+                    'net_input': {  # Match the format expected by ShapeEncoder
+                        "shape": batch["shape"],
+                        "shape_patches": batch["shape_patches"],
+                        "input_frag_idx": batch["input_frag_idx"],
+                        "input_frag_idx_mask": batch["input_frag_idx_mask"],
+                        "input_frag_trans": batch["input_frag_trans"],
+                        "input_frag_trans_mask": batch["input_frag_trans_mask"],
+                        "input_frag_r_mat": batch["input_frag_r_mat"],
+                        "input_frag_r_mat_mask": batch["input_frag_r_mat_mask"],
+                    }
+                }
+                encoder_output = self.pretrained_encoder(encoder_inputs)
+                code = encoder_output[0]
+                padding_mask = encoder_output[1]
+                return code, padding_mask, {}
+
+        # Otherwise use the regular encoder
         encoder_out = self.encoder(batch)
-        
-        # Extract components
-        code = encoder_out[0]  # Should be [8, 343, 1024]
-        padding_mask = encoder_out[1]  # Should be [8, 343]
+        code = encoder_out[0]
+        padding_mask = encoder_out[1]
         loss_dict = encoder_out[2] if len(encoder_out) > 2 else {}
         
-        # Force to batch-first if needed
         if code.size(0) == padding_mask.size(1):
             code = code.transpose(0, 1)
             
