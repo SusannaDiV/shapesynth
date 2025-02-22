@@ -13,13 +13,13 @@ from typing import Optional
 
 class ShapePretrainingTaskNoRegression:
     def __init__(self,
-                 grid_resolution=1.0,
-                 max_dist_stamp=3.0,
-                 max_dist=10.0,
+                 grid_resolution=0.5,
+                 max_dist_stamp=4.0,
+                 max_dist=6.75,
                  rotation_bin=24,
                  max_translation=1.0,
                  max_seq_len=20,
-                 patch_size=3,
+                 patch_size=4,
                  delta_input=False,
                  teacher_force_inference=False,
                  shape_noise_mu=0.0,
@@ -827,6 +827,7 @@ def create_data(
     fpindex: FingerprintIndex,
     pretrained_model_path: Optional[str] = None,
 ):
+    print("\n=== Starting create_data ===")
     atom_f, bond_f = product.featurize_simple()
     stack_feats = featurize_stack_actions(
         mol_idx_seq=mol_idx_seq,
@@ -836,15 +837,25 @@ def create_data(
     )
 
     processor = SingleSmilesProcessor(vocab_path)
+    
     processed_data = processor.process_smiles(product._smiles)
     
+    print("\nInitializing ShapePretrainingTaskNoRegression...")
     encoder = ShapePretrainingTaskNoRegression(vocab_path=vocab_path)
     desert_batch = encoder.process_samples([processed_data], training=True)
     
+    print("\nShape patches before encoder:")
+    print(f"Type: {type(desert_batch['net_input']['shape_patches'])}")
+    print(f"Shape: {desert_batch['net_input']['shape_patches'].shape}")
+    print(f"Dtype: {desert_batch['net_input']['shape_patches'].dtype}")
+    
     if pretrained_model_path:
+        print("\nLoading pretrained encoder...")
         pretrained_encoder = ShapeEncoder.from_pretrained(pretrained_model_path)
         with torch.no_grad():
+            print("Running pretrained encoder forward pass...")
             encoder_output = pretrained_encoder(desert_batch['net_input']['shape_patches'])
+            print(f"Encoder output shape: {encoder_output[0].shape}")
         desert_batch['net_input']['shape_embeddings'] = encoder_output[0]
     
     desert_data = {
