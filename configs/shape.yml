@@ -14,7 +14,7 @@ data:
 model:
   encoder_type: shape_pretrained
   encoder:
-    pretrained: /home/luost_local/sdivita/synformer/data/desert/1WW_30W_5048064.pt
+    pretrained: data/desert/1WW_30W_5048064.pt
   decoder:
     d_model: 1024
     nhead: 16

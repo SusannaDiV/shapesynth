@@ -737,7 +737,7 @@ from synformer.chem.mol import Molecule
 from synformer.chem.reaction import Reaction
 from synformer.chem.stack import Stack
 from synformer.utils.image import draw_text, make_grid
-vocab_path = '/home/luost_local/sdivita/zerosynth/chemprojector/data/fragment/preparation/fragmenizer/vocab.pkl'
+vocab_path = 'data/vocab.pkl'
 
 
 class TokenType(enum.IntEnum):
@@ -830,7 +830,6 @@ def create_data(
     rxn_seq: Sequence[Reaction | None],
     rxn_idx_seq: Sequence[int | None],
     fpindex: FingerprintIndex,
-    pretrained_model_path: Optional[str] = None,
 ):
     atom_f, bond_f = product.featurize_simple()
     stack_feats = featurize_stack_actions(
@@ -841,32 +840,16 @@ def create_data(
     )
 
     processor = SingleSmilesProcessor(vocab_path)
-    
     processed_data = processor.process_smiles(product._smiles)
     
     encoder = ShapePretrainingTaskNoRegression(vocab_path=vocab_path)
     desert_batch = encoder.process_samples([processed_data], training=True)
-    '''
-    if pretrained_model_path:
-        print("\nLoading pretrained encoder...")
-        pretrained_encoder = ShapeEncoder.from_pretrained(pretrained_model_path)
-        with torch.no_grad():
-            encoder_output = pretrained_encoder(desert_batch['net_input']['shape_patches'])
-        desert_batch['net_input']['shape_embeddings'] = encoder_output[0]
     
     desert_data = {
         k: (v[0] if isinstance(v, torch.Tensor) and v.dim() > 0 else v)
         for k, v in desert_batch["net_input"].items()
     }
-    '''
-    '''
-    print("\nAfter extraction, desert_data keys and shapes:")
-    for k, v in desert_data.items():
-        if isinstance(v, (torch.Tensor, np.ndarray)):
-            print(f"{k}: shape={v.shape}, dtype={v.dtype}")
-        else:
-            print(f"{k}: type={type(v)}")
-    '''
+    
     data: "ProjectionData" = {
         "mol_seq": mol_seq,
         "rxn_seq": rxn_seq,
