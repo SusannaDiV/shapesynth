@@ -1,0 +1,17 @@
+LICENSE
+README.md
+pyproject.toml
+requirements.txt
+setup.py
+synformer/__init__.py
+synformer.egg-info/PKG-INFO
+synformer.egg-info/SOURCES.txt
+synformer.egg-info/dependency_links.txt
+synformer.egg-info/requires.txt
+synformer.egg-info/top_level.txt
+synformer/data/__init__.py
+synformer/data/collate.py
+synformer/data/common.py
+synformer/data/processingencoder_part.py
+synformer/data/projection_dataset_new.py
+synformer/data/single_smile_processor.py
