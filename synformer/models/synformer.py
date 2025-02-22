@@ -10,6 +10,9 @@ from synformer.chem.mol import Molecule
 from synformer.chem.reaction import Reaction
 from synformer.chem.stack import Stack
 from synformer.data.common import ProjectionBatch, TokenType
+from synformer.models.encoder import get_encoder
+from synformer.models.decoder import Decoder
+from synformer.models.head import ClassifierHead, get_fingerprint_head
 
 from .classifier_head import ClassifierHead
 from .decoder import Decoder
@@ -165,8 +168,8 @@ class Synformer(nn.Module):
         
         if cfg.encoder_type == "shape_pretrained":
             print("\nLoading pretrained encoder...")
-            self.pretrained_encoder = ShapeEncoder.from_pretrained(cfg.encoder.pretrained)
-            self.encoder = None  # We don't need the regular encoder
+            self.pretrained_encoder = get_encoder("shape", cfg.encoder)
+            self.encoder = None
         else:
             self.encoder = get_encoder(cfg.encoder_type, cfg.encoder)
         
