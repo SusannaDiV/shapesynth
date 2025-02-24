@@ -6,7 +6,7 @@ from .shape import ShapePretrainingEncoder, ShapeEncoder
 def get_encoder(encoder_type: str, cfg: dict) -> BaseEncoder:
     """Get encoder instance based on type and config."""
     if encoder_type == 'shape':
-        return ShapeEncoder(**cfg)
+        return ShapePretrainingEncoder(**cfg)
     elif encoder_type == 'shape_pretrained':
         # Extract encoder config and pretrained path
         encoder_cfg = {k: v for k, v in cfg.items() if k != 'pretrained'}

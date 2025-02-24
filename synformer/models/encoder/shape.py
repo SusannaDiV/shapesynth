@@ -375,6 +375,7 @@ class TransformerEncoderLayer(AbstractEncoderLayer):
             src = self.ffn_norm(src)
         return src
 
+
 class TransformerEncoder(AbstractEncoder):
     """
     TransformerEncoder is a transformer encoder.
@@ -472,19 +473,17 @@ class TransformerEncoder(AbstractEncoder):
                                           for _ in range(self._num_layers)])
         self._norm = nn.LayerNorm(self._d_model) if self._normalize_before else None
 
-    def _forward(self, batch: dict):
-        # Check required fields are present
-        if "desert_input_frag_idx" not in batch:
-            raise ValueError("desert_input_frag_idx must be in batch")
-        
-        # Get input tensors from batch
-        src = batch["desert_input_frag_idx"]  # This is the tensor we want to process
-        src_key_padding_mask = batch["desert_input_frag_idx_mask"]
-        
-        # Now we can get the batch size and sequence length
-        bz, sl = src.size(0), src.size(1)
-        
-        # Rest of the forward pass
+    def _forward(self, src: Tensor):
+        r"""
+        Args:
+            src: tokens in src side.
+              :math:`(N, S)` where N is the batch size, S is the source sequence length.
+
+        Outputs:
+            - source token hidden representation.
+              :math:`(S, N, E)` where S is the source sequence length, N is the batch size,
+              E is the embedding size.
+        """
         x = self._embed(src)
         if self._embed_scale is not None:
             x = x * self._embed_scale
@@ -521,34 +520,17 @@ class ShapePretrainingEncoder(TransformerEncoder):
     def __init__(self, patch_size, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._patch_size = patch_size
-        self._patch_ffn = FFN(self._patch_size**3, self._d_model, self._d_model)
     
     def build(self,
               embed, 
               special_tokens):
         super().build(embed, special_tokens)
+        self._patch_ffn = FFN(self._patch_size**3, self._d_model, self._d_model)
     
-    def _forward(self, batch: dict):
-        """Forward pass for the encoder"""
-        # Extract shape patches from batch
-        if isinstance(batch, dict):
-            if "shape_patches" not in batch:
-                raise ValueError("shape_patches must be in batch")
-            src = batch["shape_patches"]
-        else:
-            src = batch
-        
-        
-        # Ensure float dtype
-        if src.dtype != torch.float32:
-            src = src.float()
-        
+    def _forward(self, src):
         bz, sl = src.size(0), src.size(1)
         
-        # Project patches to model dimension
-        x = self._patch_ffn(src)  # [batch, seq, dim]
-        
-        # Rest of the forward pass...
+        x = self._patch_ffn(src)
         if self._embed_scale is not None:
             x = x * self._embed_scale
         if self._pos_embed is not None:
@@ -570,15 +552,10 @@ class ShapePretrainingEncoder(TransformerEncoder):
             encoder_out = x[1:], src_padding_mask[:, 1:], x[0]
         else:
             encoder_out = x, src_padding_mask
-        
 
         return encoder_out
-
-    @property
-    def dim(self):
-        """Alias for d_model to maintain compatibility"""
-        return self._d_model
-
+    
+    
 class ShapeEncoder(BaseEncoder):
     _pretrained_instance = None  # Class variable to store singleton instance
 
