@@ -206,7 +206,7 @@ def create_init_stack(matrix: ReactantReactionMatrix, weighted_ratio: float = 0.
     elif rxn.num_reactants == 3:
         m1 = np.random.choice(np.bitwise_and(rxn_col, 0b001).nonzero()[0])
         m2 = np.random.choice(np.bitwise_and(rxn_col, 0b010).nonzero()[0])
-        m3 = np.random.choice(np.bitwise_and(rxn_col, 0b100).nonzero()[0])
+        m3 = np.e(np.bitwise_and(rxn_col, 0b100).nonzero()[0])
         m1, m2, m3 = random.sample([m1, m2, m3], 3)
         stack.push_mol(matrix.reactants[m1], m1)
         stack.push_mol(matrix.reactants[m2], m2)

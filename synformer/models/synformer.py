@@ -191,41 +191,42 @@ class Synformer(nn.Module):
         self.fingerprint_head = get_fingerprint_head(cfg.fingerprint_head_type, cfg.fingerprint_head)
 
     def encode(self, batch: ProjectionBatch):
-        # If we have a pretrained encoder, use it on the batch first
-        if hasattr(self, 'pretrained_encoder'):
-            with torch.no_grad():
-                device = next(self.decoder.parameters()).device
-                
-                if 'shape_patches' not in batch:
-                    raise ValueError("shape_patches missing from batch")
-                
-                encoder_inputs = {
-                    'shape': batch['shape'].to(device),
-                    'shape_patches': batch['shape_patches'].to(device),
-                    'input_frag_idx': batch['input_frag_idx'].to(device),
-                    'input_frag_idx_mask': batch['input_frag_idx_mask'].to(device),
-                    'input_frag_trans': batch['input_frag_trans'].to(device),
-                    'input_frag_trans_mask': batch['input_frag_trans_mask'].to(device),
-                    'input_frag_r_mat': batch['input_frag_r_mat'].to(device),
-                    'input_frag_r_mat_mask': batch['input_frag_r_mat_mask'].to(device)
-                }
-                encoder_output = self.pretrained_encoder(encoder_inputs)
-                code = encoder_output[0].to(device)
-                padding_mask = encoder_output[1].to(device)
-                if code.dim() == 3 and code.size(0) != padding_mask.size(0):
-                    code = code.transpose(0, 1)
-                
-                return code, padding_mask, {}
-
-        encoder_out = self.encoder(batch)
+        # Build encoder if not already built
+        device = next(self.decoder.parameters()).device
+        if not hasattr(self.encoder, '_patch_ffn'):
+            embed = nn.Embedding(2, self.encoder._d_model).to(device)
+            self.encoder.build(
+                embed=embed,
+                special_tokens={'pad': 0}
+            )
+        
+        # Move encoder to device
+        self.encoder = self.encoder.to(device)
+        
+        # Use regular encoder with tensors on correct device
+        shape_patches = batch['shape_patches'].to(device)
+        encoder_out = self.encoder(shape_patches)
         code = encoder_out[0]
         padding_mask = encoder_out[1]
         loss_dict = encoder_out[2] if len(encoder_out) > 2 else {}
         
         if code.size(0) == padding_mask.size(1):
             code = code.transpose(0, 1)
-            
-        return code, padding_mask, loss_dict
+        
+        # Get DESERT inputs if available
+        desert_keys = [
+            'input_frag_idx', 'input_frag_idx_mask',
+            'input_frag_trans', 'input_frag_trans_mask',
+            'input_frag_r_mat', 'input_frag_r_mat_mask'
+        ]
+        
+        if all(k in batch for k in desert_keys):
+            desert_inputs = {k: batch[k].to(device) for k in desert_keys}
+        else:
+            desert_inputs = None
+            print("No desert inputs found - nothing is passed directly to the decoder")
+        
+        return code, padding_mask, loss_dict, desert_inputs
 
     def get_loss(
         self,
@@ -270,7 +271,7 @@ class Synformer(nn.Module):
         return loss_dict, aux_dict
 
     def get_loss_shortcut(self, batch: ProjectionBatch, **options):
-        code, code_padding_mask, encoder_loss_dict = self.encode(batch)
+        code, code_padding_mask, encoder_loss_dict, _ = self.encode(batch)
         loss_dict, aux_dict = self.get_loss(
             code=code,
             code_padding_mask=code_padding_mask,
@@ -318,7 +319,7 @@ class Synformer(nn.Module):
         }
 
     def get_log_likelihood_shortcut(self, batch: ProjectionBatch, **options):
-        code, code_padding_mask, _ = self.encode(batch)
+        code, code_padding_mask, _, _ = self.encode(batch)
         return self.get_log_likelihood(
             code=code,
             code_padding_mask=code_padding_mask,
@@ -380,7 +381,7 @@ class Synformer(nn.Module):
         temperature_reactant: float = 1.0,
         **options,
     ):
-        code, code_padding_mask, _ = self.encode(batch)
+        code, code_padding_mask, _, _ = self.encode(batch)
         bsz = code.size(0)
         fp_dim = self.fingerprint_head.fingerprint_dim
 

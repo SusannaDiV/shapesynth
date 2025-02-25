@@ -99,21 +99,33 @@ class ProjectionDataset(IterableDataset[ProjectionData]):
                 max_num_atoms=self._max_num_atoms,
                 init_stack_weighted_ratio=self._init_stack_weighted_ratio,
             ):
-                mol_seq_full = stack.mols
-                mol_idx_seq_full = stack.get_mol_idx_seq()
-                rxn_seq_full = stack.rxns
-                rxn_idx_seq_full = stack.get_rxn_idx_seq()
-                product = random.choice(list(stack.get_top()))
-                data = create_data(
-                    product=product,
-                    mol_seq=mol_seq_full,
-                    mol_idx_seq=mol_idx_seq_full,
-                    rxn_seq=rxn_seq_full,
-                    rxn_idx_seq=rxn_idx_seq_full,
-                    fpindex=self._fpindex,
-                )
-                data["smiles"] = data["smiles"][: self._max_smiles_len]
-                yield data
+                try:
+                    mol_seq_full = stack.mols
+                    mol_idx_seq_full = stack.get_mol_idx_seq()
+                    rxn_seq_full = stack.rxns
+                    rxn_idx_seq_full = stack.get_rxn_idx_seq()
+                    
+                    # used to be random.choice(list(stack.get_top()))
+                    for product in stack.get_top():
+                        try:
+                            data = create_data(
+                                product=product,
+                                mol_seq=mol_seq_full,
+                                mol_idx_seq=mol_idx_seq_full,
+                                rxn_seq=rxn_seq_full,
+                                rxn_idx_seq=rxn_idx_seq_full,
+                                fpindex=self._fpindex,
+                            )
+                            data["smiles"] = data["smiles"][: self._max_smiles_len]
+                            yield data
+                            break  # Successfully processed one molecule, move to next stack
+                        except ValueError as e:
+                            print(f"Skipping molecule due to error: {str(e)}")
+                            continue
+                        
+                except Exception as e:
+                    print(f"Skipping entire stack due to error: {str(e)}")
+                    continue
 
 
 class ProjectionDataModule(pl.LightningDataModule):

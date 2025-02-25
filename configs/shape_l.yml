@@ -33,7 +33,7 @@ model:
     num_reaction_classes: 120
   fingerprint_head_type: diffusion
   fingerprint_head:
-    d_model: 768
+    d_model: 1024
     fingerprint_dim: ${chem.fp_option.morgan_n_bits}
     hidden_dim: 4096
     diffusion_steps: 100

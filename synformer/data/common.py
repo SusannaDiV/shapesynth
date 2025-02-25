@@ -456,12 +456,12 @@ class SingleSmilesProcessor:
         
         mol = Chem.AddHs(mol)
         if AllChem.EmbedMolecule(mol, useRandomCoords=True) != 0:
-            raise ValueError(f"Failed to generate 3D conformer")
+            raise ValueError(f"Failed to generate 3D conformer for {smiles}")
 
         try:
             AllChem.MMFFOptimizeMolecule(mol, maxIters=1000)
         except Exception as e:
-            print(f"MMFF optimization failed ({e})")
+            raise ValueError(f"MMFF optimization failed ({e})")
         return mol
 
     def process_smiles(self, smiles):

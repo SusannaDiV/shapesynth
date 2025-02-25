@@ -525,8 +525,19 @@ class ShapePretrainingEncoder(TransformerEncoder):
               embed, 
               special_tokens):
         super().build(embed, special_tokens)
-        self._patch_ffn = FFN(self._patch_size**3, self._d_model, self._d_model)
+        # Create FFN on same device as embed
+        device = embed.weight.device
+        self._patch_ffn = FFN(self._patch_size**3, self._d_model, self._d_model).to(device)
     
+    def forward(self, batch):
+        # Handle both tensor and dict inputs
+        if isinstance(batch, dict):
+            src = batch['shape_patches']
+        else:
+            src = batch
+            
+        return self._forward(src)
+        
     def _forward(self, src):
         bz, sl = src.size(0), src.size(1)
         
