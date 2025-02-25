@@ -203,30 +203,25 @@ class Synformer(nn.Module):
         # Move encoder to device
         self.encoder = self.encoder.to(device)
         
-        # Use regular encoder with tensors on correct device
-        shape_patches = batch['shape_patches'].to(device)
-        encoder_out = self.encoder(shape_patches)
-        code = encoder_out[0]
-        padding_mask = encoder_out[1]
-        loss_dict = encoder_out[2] if len(encoder_out) > 2 else {}
-        
-        if code.size(0) == padding_mask.size(1):
-            code = code.transpose(0, 1)
-        
-        # Get DESERT inputs if available
-        desert_keys = [
-            'input_frag_idx', 'input_frag_idx_mask',
-            'input_frag_trans', 'input_frag_trans_mask',
-            'input_frag_r_mat', 'input_frag_r_mat_mask'
-        ]
-        
-        if all(k in batch for k in desert_keys):
-            desert_inputs = {k: batch[k].to(device) for k in desert_keys}
-        else:
-            desert_inputs = None
-            print("No desert inputs found - nothing is passed directly to the decoder")
-        
-        return code, padding_mask, loss_dict, desert_inputs
+        try:
+            # Use regular encoder with tensors on correct device
+            shape_patches = batch['shape_patches'].to(device)
+            encoder_out = self.encoder(shape_patches)
+            code = encoder_out[0]
+            padding_mask = encoder_out[1]
+            loss_dict = encoder_out[2] if len(encoder_out) > 2 else {}
+            
+            if code.size(0) == padding_mask.size(1):
+                code = code.transpose(0, 1)
+            
+            print(f"Successfully encoded batch! Shape patches size: {shape_patches.size()}, Output code size: {code.size()}")
+            
+            
+            return code, padding_mask, loss_dict
+            
+        except Exception as e:
+            print(f"Error encoding batch: {str(e)}")
+            raise e
 
     def get_loss(
         self,

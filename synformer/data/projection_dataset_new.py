@@ -45,12 +45,6 @@ class Collater:
         }
  
         self.spec_desert = {
-            "input_frag_idx": collate_tokens,
-            "input_frag_idx_mask": collate_padding_masks,
-            "input_frag_trans": collate_tokens,
-            "input_frag_trans_mask": collate_padding_masks,
-            "input_frag_r_mat": collate_tokens,
-            "input_frag_r_mat_mask": collate_padding_masks,
             "shape": collate_3d_features,
             "shape_patches": collate_2d_features,
         }

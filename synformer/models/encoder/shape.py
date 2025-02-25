@@ -634,9 +634,7 @@ class ShapeEncoder(BaseEncoder):
 
     def forward(self, batch: dict):
         # Check required fields are present
-        if "desert_input_frag_idx" not in batch:
-            raise ValueError("desert_input_frag_idx must be in batch")
-            
+        
         # Get input tensors from batch
         src = batch["desert_input_frag_idx"]  
         src_key_padding_mask = batch["desert_input_frag_idx_mask"]
