@@ -214,7 +214,7 @@ class Synformer(nn.Module):
             if code.size(0) == padding_mask.size(1):
                 code = code.transpose(0, 1)
             
-            print(f"Successfully encoded batch! Shape patches size: {shape_patches.size()}, Output code size: {code.size()}")
+            #print(f"Successfully encoded batch! Shape patches size: {shape_patches.size()}, Output code size: {code.size()}")
             
             
             return code, padding_mask, loss_dict
@@ -314,7 +314,7 @@ class Synformer(nn.Module):
         }
 
     def get_log_likelihood_shortcut(self, batch: ProjectionBatch, **options):
-        code, code_padding_mask, _, _ = self.encode(batch)
+        code, code_padding_mask, _ = self.encode(batch)
         return self.get_log_likelihood(
             code=code,
             code_padding_mask=code_padding_mask,
@@ -376,7 +376,7 @@ class Synformer(nn.Module):
         temperature_reactant: float = 1.0,
         **options,
     ):
-        code, code_padding_mask, _, _ = self.encode(batch)
+        code, code_padding_mask, _ = self.encode(batch)
         bsz = code.size(0)
         fp_dim = self.fingerprint_head.fingerprint_dim
 

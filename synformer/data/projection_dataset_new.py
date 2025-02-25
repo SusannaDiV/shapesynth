@@ -45,8 +45,7 @@ class Collater:
         }
  
         self.spec_desert = {
-            "shape": collate_3d_features,
-            "shape_patches": collate_2d_features,
+            "shape_patches": collate_2d_features
         }
 
     def __call__(self, data_list: list[ProjectionData]) -> ProjectionBatch:
