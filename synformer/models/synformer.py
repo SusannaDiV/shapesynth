@@ -266,7 +266,7 @@ class Synformer(nn.Module):
         return loss_dict, aux_dict
 
     def get_loss_shortcut(self, batch: ProjectionBatch, **options):
-        code, code_padding_mask, encoder_loss_dict, _ = self.encode(batch)
+        code, code_padding_mask, encoder_loss_dict = self.encode(batch)
         loss_dict, aux_dict = self.get_loss(
             code=code,
             code_padding_mask=code_padding_mask,
