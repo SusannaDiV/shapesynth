@@ -14,11 +14,11 @@ data:
 model:
   encoder_type: shape
   adapter:
-    unimol_dim: 1024      # Encoder output dimension
-    d_model: 768          # Decoder input dimension
-    num_tokens: 32        # Match decoder sequence length
+    unimol_dim: 1024     
+    d_model: 768        
+    num_tokens: 32       
     num_layers: 2
-    nhead: 16            # Divisible with d_model (768/16 = 48)
+    nhead: 16            
     dim_feedforward: 3072
     dropout: 0.1
     activation: gelu
@@ -33,17 +33,17 @@ model:
     learn_pos: True
     patch_size: 4
   decoder:
-    d_model: 768         # Match adapter output
+    d_model: 768        
     nhead: 16
     dim_feedforward: 4096
     num_layers: 10
-    pe_max_len: 32       # Match adapter's num_tokens
+    pe_max_len: 32      
     output_norm: false
     fingerprint_dim: ${chem.fp_option.morgan_n_bits}
     num_reaction_classes: 120
   fingerprint_head_type: diffusion
   fingerprint_head:
-    d_model: 768         # Changed to match decoder output dimension
+    d_model: 768        
     fingerprint_dim: ${chem.fp_option.morgan_n_bits}
     hidden_dim: 4096
     diffusion_steps: 100

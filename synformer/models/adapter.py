@@ -40,7 +40,7 @@ class UniMolAdapter(nn.Module):
         self.d_model = d_model 
         self.dim_reduction = nn.Linear(unimol_dim, d_model) if unimol_dim != d_model else None
         
-        # Learnable token embeddings that will be expanded
+        # token embeddings to be expanded
         self.token_embedding = nn.Parameter(torch.randn(1, 1, d_model))
         
         self.pos_encoding = PositionalEncoding(d_model=d_model, max_len=num_tokens)
