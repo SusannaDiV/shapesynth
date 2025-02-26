@@ -12,7 +12,7 @@ from synformer.chem.stack import Stack
 from synformer.data.common import ProjectionBatch, TokenType
 from synformer.models.encoder import get_encoder
 from synformer.models.decoder import Decoder
-
+from synformer.models.adapter import UniMolAdapter, ContinuousCodeProjector
 from .classifier_head import ClassifierHead
 from .decoder import Decoder
 from .encoder import get_encoder, ShapeEncoder
@@ -178,17 +178,28 @@ class Synformer(nn.Module):
         
         print(f"Initialized Synformer with encoder_type: {cfg.encoder_type}")
         
-        cfg.decoder.d_model = 1024  # Override the 768 from config
+        cfg.decoder.d_model = 768#1024  # Override the 768 from config
         decoder_kwargs = {}
         if "decoder_only" not in cfg.decoder and cfg.encoder_type == "none":
             decoder_kwargs["decoder_only"] = True
         self.decoder = Decoder(**cfg.decoder, **decoder_kwargs)
-        self.d_model: int = 1024
+        self.d_model: int = 768#int = 1024
         
         # Remove projection since we're matching dimensions
         self.token_head = ClassifierHead(self.d_model, max(TokenType) + 1)
         self.reaction_head = ClassifierHead(self.d_model, cfg.decoder.num_reaction_classes)
         self.fingerprint_head = get_fingerprint_head(cfg.fingerprint_head_type, cfg.fingerprint_head)
+
+        # Initialize both projector and adapter if adapter config exists
+        if hasattr(cfg, 'adapter'):
+            self.projector = ContinuousCodeProjector(
+                in_dim=1024,  # Encoder output dimension
+                out_dim=768   # Decoder input dimension
+            )
+            self.adapter = UniMolAdapter(**cfg.adapter)
+        else:
+            self.projector = None
+            self.adapter = None
 
     def encode(self, batch: ProjectionBatch):
         # Build encoder if not already built
@@ -214,8 +225,20 @@ class Synformer(nn.Module):
             if code.size(0) == padding_mask.size(1):
                 code = code.transpose(0, 1)
             
-            #print(f"Successfully encoded batch! Shape patches size: {shape_patches.size()}, Output code size: {code.size()}")
-            
+            if self.adapter is not None:
+                # First project the continuous code from 1024 to 768
+                if code.dim() == 4 and code.size(1) == 1:
+                    code = code.squeeze(1)  # Remove extra dimension if present
+                
+                # Use adapter to convert to token sequence
+                code = self.adapter(code)  # Will handle both projection and sequence conversion
+                
+                # Create new padding mask for adapter output
+                padding_mask = torch.zeros(
+                    (code.size(0), self.adapter.num_tokens),
+                    dtype=torch.bool,
+                    device=code.device
+                )
             
             return code, padding_mask, loss_dict
             
