@@ -2,10 +2,16 @@ import os
 import pickle
 import random
 from typing import cast
-
+from contextlib import contextmanager
+import signal
+from rdkit import Chem
+from rdkit.Chem import AllChem
+from rdkit import RDLogger
 import pytorch_lightning as pl
 import torch
-from torch.utils.data import DataLoader, IterableDataset
+from torch.utils.data import DataLoader, IterableDataset, get_worker_info
+import threading
+import time
 
 from synformer.chem.fpindex import FingerprintIndex
 from synformer.chem.matrix import ReactantReactionMatrix
@@ -18,10 +24,23 @@ from .collate import (
     collate_2d_tokens,
     collate_padding_masks,
     collate_tokens,
-    collate_3d_features,
-    collate_2d_features,
+    collate_2d_features
 )
 from .common import ProjectionBatch, ProjectionData, create_data
+
+
+@contextmanager
+def timeout(seconds, message="Operation timed out"):
+    def signal_handler(signum, frame):
+        raise TimeoutError(message)
+    
+    signal.signal(signal.SIGALRM, signal_handler)
+    signal.alarm(seconds)
+    
+    try:
+        yield
+    finally:
+        signal.alarm(0)
 
 
 class Collater:
@@ -43,7 +62,6 @@ class Collater:
             "reactant_fps": collate_1d_features,
             "token_padding_mask": collate_padding_masks,
         }
- 
         self.spec_desert = {
             "shape_patches": collate_2d_features
         }
@@ -59,6 +77,31 @@ class Collater:
             "rxn_seq": [d["rxn_seq"] for d in data_list],
         }
         return cast(ProjectionBatch, batch)
+
+
+def timeout_handler(smiles: str, func, args=(), timeout=3):
+    """Thread-based timeout handler that works with multiprocessing"""
+    result = [None]
+    error = [None]
+    
+    def worker():
+        try:
+            result[0] = func(*args)
+        except Exception as e:
+            error[0] = e
+    
+    thread = threading.Thread(target=worker)
+    thread.daemon = True
+    thread.start()
+    thread.join(timeout)
+    
+    if thread.is_alive():
+        print(f"Timeout for {smiles}")
+        return None
+    if error[0] is not None:
+        print(f"Error processing {smiles}: {str(error[0])}")
+        return None
+    return result[0]
 
 
 class ProjectionDataset(IterableDataset[ProjectionData]):
@@ -80,11 +123,51 @@ class ProjectionDataset(IterableDataset[ProjectionData]):
         self._fpindex = fpindex
         self._init_stack_weighted_ratio = init_stack_weighted_ratio
         self._virtual_length = virtual_length
+        self._seen_smiles = set()  # Track seen molecules
+
+    def _process_mol(self, mol, smiles: str) -> dict | None:
+        """Process molecule without timeout"""
+        if mol is None:
+            return None
+            
+        for atom in mol.GetAtoms():
+            if atom.GetSymbol() == 'S' and atom.GetFormalCharge() != 0:
+                return None
+        
+        mol = Chem.AddHs(mol)
+        
+        try:
+            Chem.Kekulize(mol, clearAromaticFlags=True)
+            Chem.SanitizeMol(mol)
+            
+            if AllChem.EmbedMolecule(mol, useRandomCoords=True) != 0:
+                return None
+
+            AllChem.MMFFOptimizeMolecule(mol, maxIters=200)
+            return {'mol': mol}
+            
+        except Exception:
+            return None
+
+    def _process_smiles(self, smiles: str) -> dict | None:
+        """Generate a 3D conformer for a given SMILES."""
+        # Skip if we've seen this SMILES before
+        if smiles in self._seen_smiles:
+            return None
+        self._seen_smiles.add(smiles)
+        
+        mol = Chem.MolFromSmiles(smiles)
+        return timeout_handler(smiles, self._process_mol, args=(mol, smiles))
 
     def __len__(self) -> int:
         return self._virtual_length
 
     def __iter__(self):
+        # Get worker info and set different seed for each worker
+        worker_info = get_worker_info()
+        worker_id = worker_info.id if worker_info is not None else 0
+        random.seed(42 + worker_id)  # Different seed for each worker
+        
         while True:
             for stack in create_stack_step_by_step(
                 self._reaction_matrix,
@@ -97,27 +180,24 @@ class ProjectionDataset(IterableDataset[ProjectionData]):
                     mol_idx_seq_full = stack.get_mol_idx_seq()
                     rxn_seq_full = stack.rxns
                     rxn_idx_seq_full = stack.get_rxn_idx_seq()
-                    
-                    # used to be random.choice(list(stack.get_top()))
-                    for product in stack.get_top():
-                        try:
-                            data = create_data(
-                                product=product,
-                                mol_seq=mol_seq_full,
-                                mol_idx_seq=mol_idx_seq_full,
-                                rxn_seq=rxn_seq_full,
-                                rxn_idx_seq=rxn_idx_seq_full,
-                                fpindex=self._fpindex,
-                            )
-                            data["smiles"] = data["smiles"][: self._max_smiles_len]
-                            yield data
-                            break  # Successfully processed one molecule, move to next stack
-                        except ValueError as e:
-                            #print(f"Skipping molecule due to error: {str(e)}")
-                            continue
-                        
-                except Exception as e:
-                    #print(f"Skipping entire stack due to error: {str(e)}")
+                    product = random.choice(list(stack.get_top()))
+
+
+                    processed = self._process_smiles(product._smiles)
+                    if processed is not None:
+                        data = create_data(
+                            product=product,
+                            mol_seq=mol_seq_full,
+                            mol=processed['mol'],
+                            mol_idx_seq=mol_idx_seq_full,
+                            rxn_seq=rxn_seq_full,
+                            rxn_idx_seq=rxn_idx_seq_full,
+                            fpindex=self._fpindex,
+                        )
+                        data["smiles"] = data["smiles"][: self._max_smiles_len]
+                        yield data
+                        break  # Found a valid molecule, move to next stack
+                except Exception:
                     continue
 
 
@@ -178,7 +258,7 @@ class ProjectionDataModule(pl.LightningDataModule):
             drop_last=True,
             collate_fn=Collater(),
             worker_init_fn=worker_init_fn,
-            persistent_workers=True,
+            persistent_workers=True
         )
 
     def val_dataloader(self):

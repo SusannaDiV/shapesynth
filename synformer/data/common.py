@@ -17,7 +17,7 @@ from synformer.utils.image import draw_text, make_grid
 
 def process_smiles(smiles: str) -> dict:
     """Generate a 3D conformer for a given SMILES."""
-    RDLogger.DisableLog('rdApp.*')
+    #RDLogger.DisableLog('rdApp.*')
     
     try:
         mol = Chem.MolFromSmiles(smiles)
@@ -129,6 +129,7 @@ def featurize_stack(stack: Stack, end_token: bool, fpindex: FingerprintIndex) ->
 def create_data(
     product: Molecule,
     mol_seq: Sequence[Molecule],
+    mol: Chem.Mol,
     mol_idx_seq: Sequence[int | None],
     rxn_seq: Sequence[Reaction | None],
     rxn_idx_seq: Sequence[int | None],
@@ -154,15 +155,9 @@ def create_data(
         fpindex=fpindex,
     )
 
-    # Process 3D structure
-    processed_mol = process_smiles(product._smiles)
-    
-    # Generate shape encoding
+    # Generate shape encoding using pre-processed mol
     curr_atom_stamp = get_atom_stamp(grid_resolution, max_dist_stamp)
-    curr_shape = get_shape(processed_mol['mol'], 
-                          curr_atom_stamp,
-                          grid_resolution,
-                          max_dist)
+    curr_shape = get_shape(mol, curr_atom_stamp, grid_resolution, max_dist)
     
     # Process shape patches
     curr_shape_patches = get_shape_patches(curr_shape, patch_size)
@@ -171,10 +166,9 @@ def create_data(
     curr_shape_patches = curr_shape_patches.reshape(-1, patch_size**3)
     
     # Convert to tensors
-    shape = torch.tensor(curr_shape, dtype=torch.long)
     shape_patches = torch.tensor(curr_shape_patches, dtype=torch.float)
     
-    data: "ProjectionData" = {
+    data: ProjectionData = {
         "mol_seq": mol_seq,
         "rxn_seq": rxn_seq,
         "atoms": atom_f,
