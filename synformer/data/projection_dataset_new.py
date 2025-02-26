@@ -113,11 +113,11 @@ class ProjectionDataset(IterableDataset[ProjectionData]):
                             yield data
                             break  # Successfully processed one molecule, move to next stack
                         except ValueError as e:
-                            print(f"Skipping molecule due to error: {str(e)}")
+                            #print(f"Skipping molecule due to error: {str(e)}")
                             continue
                         
                 except Exception as e:
-                    print(f"Skipping entire stack due to error: {str(e)}")
+                    #print(f"Skipping entire stack due to error: {str(e)}")
                     continue
 
 

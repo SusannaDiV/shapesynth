@@ -11,25 +11,51 @@ import pickle
 from typing import Optional
 from rdkit import Chem
 from rdkit.Chem import AllChem
+from rdkit import RDLogger
 
 
 def process_smiles(smiles: str) -> dict:
     """Generate a 3D conformer for a given SMILES."""
-    mol = Chem.MolFromSmiles(smiles)
-    if mol is None:
-        raise ValueError(f"Invalid SMILES: {smiles}")
-        
-    mol = Chem.AddHs(mol)
-    if AllChem.EmbedMolecule(mol, useRandomCoords=True) != 0:
-        raise ValueError(f"Failed to generate 3D conformer for {smiles}")
-
+    RDLogger.DisableLog('rdApp.*')
+    
     try:
-        AllChem.MMFFOptimizeMolecule(mol, maxIters=1000)
+        mol = Chem.MolFromSmiles(smiles)
+        if mol is None:
+            raise ValueError(f"Invalid SMILES: {smiles}")
+            
+        
+        for atom in mol.GetAtoms():
+            if atom.GetSymbol() == 'S' and atom.GetFormalCharge() != 0:
+                raise ValueError(f"Charged sulfur atoms not supported by MMFF")
+        
+        mol = Chem.AddHs(mol)
+        
+        try:
+            Chem.Kekulize(mol, clearAromaticFlags=True)
+        except ValueError as e:
+            raise ValueError(f"Kekulization failed: {str(e)}")
+        
+        
+        try:
+            Chem.SanitizeMol(mol)
+        except Exception as e:
+            raise ValueError(f"Sanitization failed: {str(e)}")
+        
+            
+        if AllChem.EmbedMolecule(mol, useRandomCoords=True) != 0:
+            raise ValueError(f"Failed to generate 3D conformer")
+
+        try:
+            AllChem.MMFFOptimizeMolecule(mol, maxIters=1000)
+        except Exception as e:
+            raise ValueError(f"MMFF optimization failed")
+        
+        return {'mol': mol}
+        
     except Exception as e:
-        raise ValueError(f"MMFF optimization failed ({e})")
-    return {
-        'mol': mol
-    }
+        raise ValueError(f"Processing failed for {smiles}: {str(e)}")
+    finally:
+        pass
 
 import enum
 from collections.abc import Sequence
