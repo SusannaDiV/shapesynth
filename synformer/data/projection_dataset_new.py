@@ -12,7 +12,7 @@ import torch
 from torch.utils.data import DataLoader, IterableDataset, get_worker_info
 import threading
 import time
-
+from rdkit import RDLogger
 from synformer.chem.fpindex import FingerprintIndex
 from synformer.chem.matrix import ReactantReactionMatrix
 from synformer.chem.stack import create_stack_step_by_step
@@ -27,6 +27,7 @@ from .collate import (
     collate_2d_features
 )
 from .common import ProjectionBatch, ProjectionData, create_data
+RDLogger.DisableLog('rdApp.*') #UNCOMMENT (ACTUALLY JUST COMMENT)
 
 
 @contextmanager
@@ -79,7 +80,7 @@ class Collater:
         return cast(ProjectionBatch, batch)
 
 
-def timeout_handler(smiles: str, func, args=(), timeout=3):
+def timeout_handler(smiles: str, func, args=(), timeout=1.3): #used to be 3, but let's see if 1 second is enough
     """Thread-based timeout handler that works with multiprocessing"""
     result = [None]
     error = [None]
@@ -96,7 +97,7 @@ def timeout_handler(smiles: str, func, args=(), timeout=3):
     thread.join(timeout)
     
     if thread.is_alive():
-        print(f"Timeout for {smiles}")
+        #print(f"Timeout for {smiles}") #UNCOMMENT
         return None
     if error[0] is not None:
         print(f"Error processing {smiles}: {str(error[0])}")
@@ -123,7 +124,6 @@ class ProjectionDataset(IterableDataset[ProjectionData]):
         self._fpindex = fpindex
         self._init_stack_weighted_ratio = init_stack_weighted_ratio
         self._virtual_length = virtual_length
-        self._seen_smiles = set()  # Track seen molecules
 
     def _process_mol(self, mol, smiles: str) -> dict | None:
         """Process molecule without timeout"""
@@ -151,11 +151,6 @@ class ProjectionDataset(IterableDataset[ProjectionData]):
 
     def _process_smiles(self, smiles: str) -> dict | None:
         """Generate a 3D conformer for a given SMILES."""
-        # Skip if we've seen this SMILES before
-        if smiles in self._seen_smiles:
-            return None
-        self._seen_smiles.add(smiles)
-        
         mol = Chem.MolFromSmiles(smiles)
         return timeout_handler(smiles, self._process_mol, args=(mol, smiles))
 
@@ -163,10 +158,9 @@ class ProjectionDataset(IterableDataset[ProjectionData]):
         return self._virtual_length
 
     def __iter__(self):
-        # Get worker info and set different seed for each worker
         worker_info = get_worker_info()
         worker_id = worker_info.id if worker_info is not None else 0
-        random.seed(42 + worker_id)  # Different seed for each worker
+        random.seed(42 + worker_id) 
         
         while True:
             for stack in create_stack_step_by_step(
