@@ -1,17 +1,18 @@
-import random
 import numpy as np
 import torch
-from math import ceil
-from .utils.shape_utils import get_atom_stamp, get_shape, get_shape_patches, time_shift, get_grid_coords, get_rotation_bins
-import matplotlib.pyplot as plt
-import seaborn as sns
+from .utils.shape_utils import get_atom_stamp, get_shape, get_shape_patches
 import os
-from datetime import datetime
-import pickle
-from typing import Optional
 from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit import RDLogger
+import enum
+from collections.abc import Sequence
+from typing import TypedDict
+from synformer.chem.fpindex import FingerprintIndex
+from synformer.chem.mol import Molecule
+from synformer.chem.reaction import Reaction
+from synformer.chem.stack import Stack
+from synformer.utils.image import draw_text, make_grid
 
 
 def process_smiles(smiles: str) -> dict:
@@ -56,16 +57,6 @@ def process_smiles(smiles: str) -> dict:
         raise ValueError(f"Processing failed for {smiles}: {str(e)}")
     finally:
         pass
-
-import enum
-from collections.abc import Sequence
-from typing import TypedDict
-import torch
-from synformer.chem.fpindex import FingerprintIndex
-from synformer.chem.mol import Molecule
-from synformer.chem.reaction import Reaction
-from synformer.chem.stack import Stack
-from synformer.utils.image import draw_text, make_grid
 
 
 class TokenType(enum.IntEnum):
