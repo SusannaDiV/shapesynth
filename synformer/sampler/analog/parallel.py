@@ -5,7 +5,6 @@ import pickle
 import subprocess
 from multiprocessing import synchronize as sync
 from typing import TypeAlias
-import sys
 
 import pandas as pd
 import torch
@@ -30,7 +29,6 @@ class Worker(mp.Process):
         result_queue: ResultQueueType,
         gpu_id: str,
         gpu_lock: sync.Lock,
-        failed_mols: mp.managers.DictProxy,
         state_pool_opt: dict | None = None,
         max_evolve_steps: int = 12,
         max_results: int = 100,
@@ -42,7 +40,6 @@ class Worker(mp.Process):
         self._result_queue = result_queue
         self._gpu_id = gpu_id
         self._gpu_lock = gpu_lock
-        self._failed_mols = failed_mols
 
         self._state_pool_opt = state_pool_opt or {}
         self._max_evolve_steps = max_evolve_steps
@@ -69,44 +66,30 @@ class Worker(mp.Process):
                 if next_task is None:
                     self._task_queue.task_done()
                     break
-                
-                if next_task.smiles in self._failed_mols:
-                    print(f"{self.name}: Skipping known failed molecule {next_task.smiles}")
-                    self._task_queue.task_done()
-                    continue
-                    
                 result_df = self.process(next_task)
                 self._task_queue.task_done()
                 self._result_queue.put((next_task, result_df))
-                
                 if len(result_df) == 0:
-                    print(f"{self.name}: No results for {next_task.smiles}", file=sys.stderr, flush=True)
+                    print(f"{self.name}: No results for {next_task.smiles}")
                 else:
                     max_sim = result_df["score"].max()
-                    print(f"{self.name}: {max_sim:.3f} {next_task.smiles}", file=sys.stderr, flush=True)
-                    
+                    print(f"{self.name}: {max_sim:.3f} {next_task.smiles}")
         except KeyboardInterrupt:
             print(f"{self.name}: Exiting due to KeyboardInterrupt")
             return
 
     def process(self, mol: Molecule):
-        if mol.smiles in self._failed_mols:
-            print(f"{self.name}: Process: Skipping known failed molecule {mol.smiles}", file=sys.stderr, flush=True)
-            return pd.DataFrame()
-            
-        try:
-            print(f"{self.name}: Starting to process {mol.smiles}", file=sys.stderr, flush=True)
-            sampler = StatePool(
-                fpindex=self._fpindex,
-                rxn_matrix=self._rxn_matrix,
-                mol=mol,
-                model=self._model,
-                **self._state_pool_opt,
-            )
-            tl = TimeLimit(self._time_limit)
-            for _ in range(self._max_evolve_steps):
-                sampler.evolve(gpu_lock=self._gpu_lock, show_pbar=False, time_limit=tl)
-                max_sim = max(
+        sampler = StatePool(
+            fpindex=self._fpindex,
+            rxn_matrix=self._rxn_matrix,
+            mol=mol,
+            model=self._model,
+            **self._state_pool_opt,
+        )
+        tl = TimeLimit(self._time_limit)
+        for _ in range(self._max_evolve_steps):
+            sampler.evolve(gpu_lock=self._gpu_lock, show_pbar=False, time_limit=tl)
+            max_sim = max(
                 [
                     p.molecule.sim(mol, FingerprintOption.morgan_for_tanimoto_similarity())
                     for p in sampler.get_products()
@@ -116,14 +99,8 @@ class Worker(mp.Process):
             if max_sim == 1.0:
                 break
 
-            df = sampler.get_dataframe()[: self._max_results]
-            return df
-            
-        except Exception as e:
-            print(f"{self.name}: Failed to process {mol.smiles} - {str(e)}", file=sys.stderr, flush=True)
-            print(f"{self.name}: Adding {mol.smiles} to failed molecules", file=sys.stderr, flush=True)
-            self._failed_mols[mol.smiles] = str(e)
-            return pd.DataFrame()
+        df = sampler.get_dataframe()[: self._max_results]
+        return df
 
 
 class WorkerPool:
@@ -136,8 +113,6 @@ class WorkerPool:
         **worker_opt,
     ) -> None:
         super().__init__()
-        self._manager = mp.Manager()
-        self._failed_mols = self._manager.dict()  # Shared dictionary
         self._task_queue: TaskQueueType = mp.JoinableQueue(task_qsize)
         self._result_queue: ResultQueueType = mp.Queue(result_qsize)
         self._gpu_ids = [str(d) for d in gpu_ids]
@@ -148,7 +123,6 @@ class WorkerPool:
             Worker(
                 task_queue=self._task_queue,
                 result_queue=self._result_queue,
-                failed_mols=self._failed_mols,  # Pass to worker
                 gpu_id=self._gpu_ids[i % num_gpus],
                 gpu_lock=self._gpu_locks[i % num_gpus],
                 **worker_opt,
@@ -159,13 +133,8 @@ class WorkerPool:
         for w in self._workers:
             w.start()
 
-    def submit(self, mol: Molecule) -> None:
-        # Add check here before submitting to queue
-        if mol.smiles in self._failed_mols:
-            print(f"Submit: Skipping known failed molecule: {mol.smiles}", file=sys.stderr, flush=True)
-            return
-        print(f"Submit: Queuing molecule: {mol.smiles}", file=sys.stderr, flush=True)
-        self._task_queue.put(mol)
+    def submit(self, task: Molecule, block: bool = True, timeout: float | None = None):
+        self._task_queue.put(task, block=block, timeout=timeout)
 
     def fetch(self, block: bool = True, timeout: float | None = None):
         return self._result_queue.get(block=block, timeout=timeout)
@@ -231,22 +200,14 @@ class WorkerNoStop(mp.Process):
                 if next_task is None:
                     self._task_queue.task_done()
                     break
-                
-                if next_task.smiles in self._failed_mols:
-                    print(f"{self.name}: Skipping known failed molecule {next_task.smiles}", file=sys.stderr, flush=True)
-                    self._task_queue.task_done()
-                    continue
-                    
                 result_df = self.process(next_task)
                 self._task_queue.task_done()
                 self._result_queue.put((next_task, result_df))
-                
                 if len(result_df) == 0:
-                    print(f"{self.name}: No results for {next_task.smiles}", file=sys.stderr, flush=True)
+                    print(f"{self.name}: No results for {next_task.smiles}")
                 else:
                     max_sim = result_df["score"].max()
-                    print(f"{self.name}: {max_sim:.3f} {next_task.smiles}", file=sys.stderr, flush=True)
-                    
+                    print(f"{self.name}: {max_sim:.3f} {next_task.smiles}")
         except KeyboardInterrupt:
             print(f"{self.name}: Exiting due to KeyboardInterrupt")
             return

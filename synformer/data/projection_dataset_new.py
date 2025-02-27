@@ -97,10 +97,10 @@ def timeout_handler(smiles: str, func, args=(), timeout=1.3): #used to be 3, but
     thread.join(timeout)
     
     if thread.is_alive():
-        #print(f"Timeout for {smiles}") #UNCOMMENT
+        print(f"Timeout for {smiles}") #UNCOMMENT
         return None
     if error[0] is not None:
-        print(f"Error processing {smiles}: {str(error[0])}")
+        #print(f"Error processing {smiles}: {str(error[0])}")
         return None
     return result[0]
 
@@ -143,7 +143,7 @@ class ProjectionDataset(IterableDataset[ProjectionData]):
             if AllChem.EmbedMolecule(mol, useRandomCoords=True) != 0:
                 return None
 
-            AllChem.MMFFOptimizeMolecule(mol, maxIters=200)
+            AllChem.MMFFOptimizeMolecule(mol, maxIters=1000)
             return {'mol': mol}
             
         except Exception:
@@ -151,6 +151,16 @@ class ProjectionDataset(IterableDataset[ProjectionData]):
 
     def _process_smiles(self, smiles: str) -> dict | None:
         """Generate a 3D conformer for a given SMILES."""
+        # Early rejection criteria
+        if any([
+            len(smiles) > 180,  # Very long SMILES strings
+            smiles.count('(') > 8,  # Too many branches
+            smiles.count('@') > 6,  # Too many chiral centers
+            smiles.count('1') + smiles.count('2') + smiles.count('3') > 6,  # Too many rings
+        ]):
+            #print(f"Early rejection of complex molecule: {smiles}")  # Optional debug
+            return None
+        
         mol = Chem.MolFromSmiles(smiles)
         return timeout_handler(smiles, self._process_mol, args=(mol, smiles))
 
