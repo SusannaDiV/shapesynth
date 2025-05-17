@@ -1,0 +1,8 @@
+target,smiles,tanimoto_score,docking_score,score,synthesis,num_steps
+c1ccccc1,Cc1cc(-c2nc3ccc(F)cc3N2)c(C)cc1C=O,0.019,-9.800,0.737,Cc1cc(C=O)c(C)cc1C=O;Nc1ccc(F)cc1N;R20,1
+c1ccccc1,CC(=O)OCC=Cc1cc2c(C)cc(C)cc2[nH]1,0.024,-9.000,0.677,Cc1cc(C)c2cc(C=O)[nH]c2c1;CC(=O)OCCCl;R102,1
+c1ccccc1,Cc1ccc(C=CC(=O)OCC2CCN(C(=O)Cl)CC2)c(C)c1,0.027,-8.900,0.670,Cc1ccc(C=O)c(C)c1;CC(=O)OCC1CCN(C(=O)Cl)CC1;R3,1
+c1ccccc1,Cc1cc(C)c2cc(C=CC(=O)OCCCl)[nH]c2c1,0.022,-8.700,0.655,Cc1cc(C)c2cc(C=O)[nH]c2c1;CC(=O)OCCCl;R3,1
+c1ccccc1,CC(=O)Oc1ccc(OC(=O)C=Cc2c(C)c(C)cc(C)c2C)cc1,0.031,-8.500,0.641,Cc1cc(C)c(C)c(C=O)c1C;CC(=O)Oc1ccc(OC(C)=O)cc1;R3,1
+c1ccccc1,CC(=O)OCCC(O)c1cc2c(C)cc(C)cc2[nH]1,0.019,-8.500,0.639,Cc1cc(C)c2cc(C=O)[nH]c2c1;CC(=O)OCCCl;R98,1
+c1ccccc1,Cc1cc(C)c(C=CC(=O)OCC(NC(=O)OC(C)(C)C)C(=O)O)c(O)c1,0.020,-8.400,0.632,Cc1cc(C)c(C=O)c(O)c1;CC(=O)OCC(NC(=O)OC(C)(C)C)C(=O)O;R3,1

@@ -1,0 +1,3 @@
+target,smiles,tanimoto_score,docking_score,score,synthesis,num_steps
+c1ccccc1,COC(=O)C1(NC(=O)OC(C)(C)C)CC(CNCCC2(C)CC2)C1,0.004,-8.200,0.615,COC(=O)C1(NC(=O)OC(C)(C)C)CC(C=O)C1;CC1(CCN)CC1;R43,1
+c1ccccc1,CCOC(=CC(=O)C(F)(F)F)NC(=O)C1CC(NC(=O)OC(C)(C)C)(C(=O)O)C1,0.005,-7.900,0.593,CC(C)(C)OC(=O)NC1(C(=O)O)CC(C(=O)O)C1;CCOC(N)=CC(=O)C(F)(F)F;R8,1

@@ -1,5 +1,6 @@
 import dataclasses
-
+import os
+import pickle
 import torch
 from torch import nn
 from tqdm.auto import tqdm
@@ -17,6 +18,10 @@ from .classifier_head import ClassifierHead
 from .decoder import Decoder
 from .encoder import get_encoder, ShapeEncoder
 from .fingerprint_head import ReactantRetrievalResult, get_fingerprint_head
+
+# Import for DESERT functionality
+from synformer.models.desert.inference import run_desert_inference
+from synformer.models.desert.encoder import create_fragment_encoder
 
 
 @dataclasses.dataclass
@@ -164,6 +169,9 @@ class Synformer(nn.Module):
     def __init__(self, cfg):
         super().__init__()
         
+        # Store encoder type for later use
+        self.encoder_type = cfg.encoder_type
+        
         if cfg.encoder_type == "shape_pretrained":
             print("\nLoading pretrained encoder...")
             # Initialize encoder on CPU
@@ -172,6 +180,14 @@ class Synformer(nn.Module):
                 device='cpu'  # Force CPU initialization
             )
             self.pretrained_encoder.eval()  # Set to eval mode
+            self.encoder = None
+        elif cfg.encoder_type == "desert":
+            print("\nUsing DESERT encoder...")
+            # Store paths for DESERT model and vocabulary
+            self.desert_model_path = cfg.encoder.desert_model_path
+            self.vocab_path = cfg.encoder.vocab_path
+            self.shape_patches_path = cfg.encoder.shape_patches_path if hasattr(cfg.encoder, 'shape_patches_path') else None
+            print(f"Initialized DESERT with shape_patches_path: {self.shape_patches_path}")
             self.encoder = None
         else:
             self.encoder = get_encoder(cfg.encoder_type, cfg.encoder)
@@ -201,50 +217,138 @@ class Synformer(nn.Module):
             self.projector = None
             self.adapter = None
 
-    def encode(self, batch: ProjectionBatch):
-        # Build encoder if not already built
+    def encode(self, batch):
+        # Get device from model parameters
         device = next(self.decoder.parameters()).device
-        if not hasattr(self.encoder, '_patch_ffn'):
-            embed = nn.Embedding(2, self.encoder._d_model).to(device)
-            self.encoder.build(
-                embed=embed,
-                special_tokens={'pad': 0}
+        
+        # Check if we're using DESERT encoder
+        if hasattr(self, 'encoder_type') and self.encoder_type == "desert":
+            # DESERT molecule generation
+            if not os.path.exists(self.desert_model_path):
+                raise FileNotFoundError(f"DESERT model file not found: {self.desert_model_path}")
+            
+            # Load vocabulary to understand fragment IDs
+            vocab_path = self.vocab_path
+            with open(vocab_path, 'rb') as f:
+                vocab = pickle.load(f)
+            
+            # Create reverse mapping from ID to token
+            id_to_token = {}
+            for token, (_, _, idx) in vocab.items():
+                id_to_token[idx] = token
+            
+            # Get SMILES string - use smiles_str if available (for inference)
+            if 'smiles_str' in batch:
+                smiles_str = batch['smiles_str']
+                print(f"Using SMILES string from batch: {smiles_str}")
+            else:
+                # For training, we need to handle the tokenized SMILES
+                # This is a placeholder - in practice, you might need to convert tokens back to SMILES
+                # or store the original SMILES in the batch
+                raise ValueError("DESERT encoder requires 'smiles_str' in the batch during inference")
+            
+            # Use shape_patches_path from instance variable if not provided in batch
+            shape_patches_path = batch.get('shape_patches_path', self.shape_patches_path)
+            
+            # Run DESERT inference
+            print(f"Running DESERT inference with shape_patches_path: {shape_patches_path}")
+            desert_sequences = run_desert_inference(smiles_str, self.desert_model_path, shape_patches_path, device=device)
+            desert_sequence = desert_sequences[0]  # Take the first sequence
+            print(desert_sequence)
+            
+            # Create and initialize the fragment encoder
+            print("\n=== Step 2: Running Fragment Encoder ===\n")
+            encoder = create_fragment_encoder(vocab_path=vocab_path, device=device)
+            
+            # Encode the DESERT sequence
+            print(f"Encoding DESERT sequence with {len(desert_sequence)} fragments")
+            embeddings = encoder.encode_desert_sequence(desert_sequence, device=device)
+            
+            # Print information about the embeddings
+            print(f"Generated embeddings tensor with shape: {embeddings.shape}")
+            
+            # The embeddings are already the code we need
+            code = embeddings
+            
+            # Create a dummy padding mask (all False)
+            batch_size = code.shape[0]
+            seq_len = code.shape[1]
+            code_padding_mask = torch.zeros((batch_size, seq_len), dtype=torch.bool, device=device)
+            
+            print(f"Created code_padding_mask with shape: {code_padding_mask.shape}")
+            
+            # Empty loss dict for encoder
+            encoder_loss_dict = {}
+            
+            return code, code_padding_mask, encoder_loss_dict
+        
+        # Handle case where encoder is None
+        if self.encoder is None:
+            # If encoder is None and not using DESERT, we can't proceed
+            raise ValueError("Encoder is not initialized and not using DESERT encoder")
+        
+        # Determine encoder type from the encoder instance
+        encoder_type = "unknown"
+        if isinstance(self.encoder, ShapeEncoder):
+            encoder_type = "shape"
+        else:
+            # Assume SMILES encoder for any other type
+            encoder_type = "smiles"
+        
+        # Get d_model from encoder - handle different encoder types
+        if hasattr(self.encoder, '_d_model'):
+            d_model = self.encoder._d_model
+        elif hasattr(self.encoder, 'd_model'):
+            d_model = self.encoder.d_model
+        else:
+            # Default value for SMILES encoder
+            d_model = 768  # Standard transformer dimension
+            
+        # Create embedding for shape encoder
+        embed = nn.Embedding(2, d_model).to(device)
+        
+        # For inference, batch might be a Molecule or a simple dict
+        # Check if we're in inference mode
+        is_inference = False
+        if isinstance(batch, dict):
+            # Check if this is a simple inference batch
+            if 'smiles' in batch or 'molecule' in batch:
+                is_inference = True
+        
+        # Handle inference mode
+        if is_inference:
+            # In inference mode, we just need to encode the SMILES
+            if encoder_type == "smiles":
+                # For inference, we'll use the batch directly
+                # The encoder should handle the molecule object
+                code, code_padding_mask, encoder_loss_dict = self.encoder(batch)
+                return code, code_padding_mask, encoder_loss_dict
+            else:
+                raise ValueError(f"Inference not implemented for encoder type: {encoder_type}")
+        
+        # Regular training/validation mode
+        if encoder_type == "shape":
+            # Shape encoder
+            # Encode
+            code, code_padding_mask, encoder_loss_dict = self.encoder(
+                batch['shape_grids'],
+                batch['shape_grid_info'],
+                batch['shape_grid_mask'],
+                batch['shape_grid_labels'],
             )
-        
-        # Move encoder to device
-        self.encoder = self.encoder.to(device)
-        
-        try:
-            # Use regular encoder with tensors on correct device
-            shape_patches = batch['shape_patches'].to(device)
-            encoder_out = self.encoder(shape_patches)
-            code = encoder_out[0]
-            padding_mask = encoder_out[1]
-            loss_dict = encoder_out[2] if len(encoder_out) > 2 else {}
             
-            if code.size(0) == padding_mask.size(1):
-                code = code.transpose(0, 1)
+            # Add shape type embedding
+            code = code + embed(torch.zeros_like(code_padding_mask, dtype=torch.long))
+        elif encoder_type == "smiles":
+            # SMILES encoder
+            code, code_padding_mask, encoder_loss_dict = self.encoder(
+                batch['smiles_tokens'],
+                batch['smiles_padding_mask'],
+            )
+        else:
+            raise ValueError(f"Unknown encoder type: {encoder_type}")
             
-            if self.adapter is not None:
-                # First project the continuous code from 1024 to 768
-                if code.dim() == 4 and code.size(1) == 1:
-                    code = code.squeeze(1)  # Remove extra dimension if present
-                
-                # Use adapter to convert to token sequence
-                code = self.adapter(code)  # Will handle both projection and sequence conversion
-                
-                # Create new padding mask for adapter output
-                padding_mask = torch.zeros(
-                    (code.size(0), self.adapter.num_tokens),
-                    dtype=torch.bool,
-                    device=code.device
-                )
-            
-            return code, padding_mask, loss_dict
-            
-        except Exception as e:
-            print(f"Error encoding batch: {str(e)}")
-            raise e
+        return code, code_padding_mask, encoder_loss_dict
 
     def get_loss(
         self,
@@ -488,6 +592,125 @@ class Synformer(nn.Module):
             reactants=reactants,
             reactions=reactions,
         )
+
+    def load_pretrained_decoder(self, smiles_checkpoint_path, device='cuda'):
+        """
+        Load a pretrained decoder from a checkpoint file.
+        This replaces the current decoder with the pretrained one.
+        
+        Args:
+            smiles_checkpoint_path: Path to the checkpoint file
+            device: Device to load the decoder on
+        """
+        from omegaconf import OmegaConf
+        
+        print(f"\nLoading pretrained decoder from {smiles_checkpoint_path}...")
+        
+        # Load the full model checkpoint to get the decoder
+        full_model_checkpoint = torch.load(smiles_checkpoint_path, map_location=device)
+        config = OmegaConf.create(full_model_checkpoint['hyper_parameters']['config'])
+        
+        # Create and load the decoder
+        # First, check the actual parameters in the checkpoint
+        decoder_params = {}
+        for k in full_model_checkpoint['state_dict'].keys():
+            if k.startswith('model.decoder.'):
+                parts = k.split('.')
+                if len(parts) > 2:
+                    # Extract layer information
+                    if parts[2] == 'dec' and parts[3] == 'layers' and len(parts) > 4:
+                        layer_num = int(parts[4])
+                        if 'num_layers' not in decoder_params or layer_num + 1 > decoder_params['num_layers']:
+                            decoder_params['num_layers'] = layer_num + 1
+                    # Extract pe_max_len from pe_dec.pe shape
+                    if parts[2] == 'pe_dec' and parts[3] == 'pe':
+                        pe_shape = full_model_checkpoint['state_dict'][k].shape
+                        decoder_params['pe_max_len'] = pe_shape[1]
+        
+        print(f"Detected decoder parameters: {decoder_params}")
+        
+        # Create decoder with the correct parameters
+        pretrained_decoder = Decoder(
+            d_model=768,
+            nhead=16,
+            dim_feedforward=4096,
+            num_layers=decoder_params.get('num_layers', 10),  # Use detected or default to 10
+            pe_max_len=decoder_params.get('pe_max_len', 32),  # Use detected or default to 32
+            output_norm=False,  # Set to False to match checkpoint architecture
+            fingerprint_dim=config.model.decoder.fingerprint_dim,
+            num_reaction_classes=config.model.decoder.num_reaction_classes
+        )
+        
+        # Extract decoder weights from the checkpoint
+        decoder_state_dict = {}
+        for k, v in full_model_checkpoint['state_dict'].items():
+            if k.startswith('model.decoder.'):
+                # Remove 'model.decoder.' prefix
+                new_key = k.replace('model.decoder.', '')
+                decoder_state_dict[new_key] = v
+        
+        # Load weights into decoder
+        pretrained_decoder.load_state_dict(decoder_state_dict)
+        pretrained_decoder.to(device)
+        pretrained_decoder.eval()
+        
+        # Replace the current decoder with the pretrained one
+        self.decoder = pretrained_decoder
+        
+        # Load token head, reaction head, and fingerprint head
+        token_head = ClassifierHead(768, max(TokenType) + 1)
+        token_head_state_dict = {}
+        for k, v in full_model_checkpoint['state_dict'].items():
+            if k.startswith('model.token_head.'):
+                new_key = k.replace('model.token_head.', '')
+                token_head_state_dict[new_key] = v
+        token_head.load_state_dict(token_head_state_dict)
+        token_head.to(device)
+        token_head.eval()
+        self.token_head = token_head
+        
+        reaction_head = ClassifierHead(768, config.model.decoder.num_reaction_classes)
+        reaction_head_state_dict = {}
+        for k, v in full_model_checkpoint['state_dict'].items():
+            if k.startswith('model.reaction_head.'):
+                new_key = k.replace('model.reaction_head.', '')
+                reaction_head_state_dict[new_key] = v
+        reaction_head.load_state_dict(reaction_head_state_dict)
+        reaction_head.to(device)
+        reaction_head.eval()
+        self.reaction_head = reaction_head
+        
+        # Load fingerprint head
+        fingerprint_head = get_fingerprint_head(
+            config.model.fingerprint_head_type, 
+            config.model.fingerprint_head
+        )
+        fingerprint_head_state_dict = {}
+        for k, v in full_model_checkpoint['state_dict'].items():
+            if k.startswith('model.fingerprint_head.'):
+                new_key = k.replace('model.fingerprint_head.', '')
+                fingerprint_head_state_dict[new_key] = v
+        fingerprint_head.load_state_dict(fingerprint_head_state_dict)
+        fingerprint_head.to(device)
+        fingerprint_head.eval()
+        self.fingerprint_head = fingerprint_head
+        
+        print("Successfully loaded pretrained decoder and heads")
+
+    def load_state_dict(self, state_dict, strict=True):
+        """
+        Custom load_state_dict that handles the case when using DESERT encoder.
+        When using DESERT, we filter out encoder weights from the state_dict.
+        """
+        if hasattr(self, 'encoder_type') and self.encoder_type == "desert":
+            # Filter out encoder weights
+            filtered_state_dict = {}
+            for k, v in state_dict.items():
+                if not k.startswith('encoder.'):
+                    filtered_state_dict[k] = v
+            return super().load_state_dict(filtered_state_dict, strict=False)
+        else:
+            return super().load_state_dict(state_dict, strict=strict)
 
 
 def draw_generation_results(result: GenerateResult):

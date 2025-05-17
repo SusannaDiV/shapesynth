@@ -1,0 +1,8 @@
+target,smiles,tanimoto_score,docking_score,score,synthesis,num_steps
+c1ccccc1,[N-]=[N+]=NCCOCCn1cnc2c(NCC3(O)COC3)ncnc21,0.008,-8.100,0.608,[N-]=[N+]=NCCOCCN;NCC1(O)COC1;R66,1
+c1ccccc1,[N-]=[N+]=NCCOCCNC(=O)C(=O)NCC1(O)COC1,0.007,-7.800,0.586,[N-]=[N+]=NCCOCCN;NCC1(O)COC1;R38,1
+c1ccccc1,C#CC1(NCc2cn(CC[N+](C)(C)CCO)nn2)CCC1,0.006,-7.500,0.563,C[N+](C)(CCO)CCN=[N+]=[N-];C#CC1(N)CCC1;R64,1
+c1ccccc1,[N-]=[N+]=NCCOCCNC(=O)NCC1(O)COC1,0.004,-7.500,0.563,[N-]=[N+]=NCCOCCN;NCC1(O)COC1;R36,1
+c1ccccc1,C#CCOC(=O)CNC(=O)C(=O)N(C)CCN=[N+]=[N-],0.010,-7.200,0.541,CNCCN=[N+]=[N-];C#CCOC(=O)CN;R38,1
+c1ccccc1,NCCOCCn1cc(CNCC2(O)COC2)nn1,0.011,-6.900,0.519,[N-]=[N+]=NCCOCCN;NCC1(O)COC1;R64,1
+c1ccccc1,C[N+](C)(CCO)CCn1cc(C2(N)CCC2)nn1,0.005,-6.900,0.518,C[N+](C)(CCO)CCN=[N+]=[N-];C#CC1(N)CCC1;R60,1

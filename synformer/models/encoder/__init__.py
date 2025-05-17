@@ -20,5 +20,9 @@ def get_encoder(encoder_type: str, cfg: dict) -> BaseEncoder:
     elif encoder_type == "none":
         print("SUCCESS: Using decoder-only mode with NoEncoder")
         return NoEncoder(**cfg)
+    elif encoder_type == "desert":
+        print("SUCCESS: Using DESERT encoder mode")
+        # DESERT encoder is handled separately in Synformer class
+        return None
     else:
         raise ValueError(f'Unknown encoder type: {encoder_type}')

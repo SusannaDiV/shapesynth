@@ -1,0 +1,15 @@
+target,smiles,tanimoto_score,docking_score,score,synthesis,num_steps
+c1ccccc1,OC(Cn1cnc2c(Nc3ccccc3Nc3c(Cl)cccc3Cl)ncnc21)(C(F)(F)F)C(F)(F)F,0.011,-10.100,0.759,Nc1ccccc1Nc1c(Cl)cccc1Cl;NCC(O)(C(F)(F)F)C(F)(F)F;R66,1
+c1ccccc1,C=C(CC(=O)Nc1ccccc1Nc1ccccc1C)C(=O)OC(C)(C)C,0.020,-9.600,0.722,Cc1ccccc1Nc1ccccc1N;C=C(CC(=O)O)C(=O)OC(C)(C)C;R8,1
+c1ccccc1,FC(F)(F)Cn1cnc2c(Nc3ccccc3Nc3c(Cl)cccc3Cl)ncnc21,0.013,-9.000,0.676,Nc1ccccc1Nc1c(Cl)cccc1Cl;NCC(F)(F)F;R66,1
+c1ccccc1,O=C(NCC(O)(C(F)(F)F)C(F)(F)F)Nc1ccccc1Nc1c(Cl)cccc1Cl,0.020,-8.900,0.670,Nc1ccccc1Nc1c(Cl)cccc1Cl;NCC(O)(C(F)(F)F)C(F)(F)F;R36,1
+c1ccccc1,Cc1ccccc1Nc1ccccc1N1CC(C(=O)OC(C)(C)C)CC1=O,0.014,-8.600,0.646,Cc1ccccc1Nc1ccccc1N;C=C(CC(=O)O)C(=O)OC(C)(C)C;R82,1
+c1ccccc1,Cc1ccccc1Nc1ccccc1NCC(CC(=O)O)C(=O)OC(C)(C)C,0.020,-8.400,0.632,Cc1ccccc1Nc1ccccc1N;C=C(CC(=O)O)C(=O)OC(C)(C)C;R59,1
+c1ccccc1,Nc1ccccc1Nc1c(Cl)cccc1NCC(F)(F)F,0.028,-7.800,0.588,Nc1ccccc1Nc1c(Cl)cccc1Cl;NCC(F)(F)F;R9,1
+c1ccccc1,Nc1ccccc1Nc1c(Cl)cccc1NCC(O)(C(F)(F)F)C(F)(F)F,0.021,-7.800,0.587,Nc1ccccc1Nc1c(Cl)cccc1Cl;NCC(O)(C(F)(F)F)C(F)(F)F;R103,1
+c1ccccc1,O=C(NCC(F)(F)F)Nc1ccccc1Nc1c(Cl)cccc1Cl,0.025,-7.700,0.580,Nc1ccccc1Nc1c(Cl)cccc1Cl;NCC(F)(F)F;R36,1
+c1ccccc1,Nc1ccccc1Nc1c(Cl)cccc1NCC(O)(C(F)(F)F)C(F)(F)F,0.021,-7.700,0.580,Nc1ccccc1Nc1c(Cl)cccc1Cl;NCC(O)(C(F)(F)F)C(F)(F)F;R9,1
+c1ccccc1,O=C(NCC(O)(C(F)(F)F)C(F)(F)F)C(=O)Nc1ccccc1Nc1c(Cl)cccc1Cl,0.018,-7.700,0.579,Nc1ccccc1Nc1c(Cl)cccc1Cl;NCC(O)(C(F)(F)F)C(F)(F)F;R38,1
+c1ccccc1,O=C(NCC(F)(F)F)C(=O)Nc1ccccc1Nc1c(Cl)cccc1Cl,0.022,-7.600,0.572,Nc1ccccc1Nc1c(Cl)cccc1Cl;NCC(F)(F)F;R38,1
+c1ccccc1,CCOC(=O)c1c(C)nn(-c2c(Cl)cccc2Cl)c1C,0.014,-6.800,0.511,NNc1c(Cl)cccc1Cl;CCOC(=O)C(C(C)=O)C(C)=O;R14,1
+c1ccccc1,NCC(Oc1cccc(Cl)c1Nc1ccccc1N)(C(F)(F)F)C(F)(F)F,0.018,-6.700,0.504,Nc1ccccc1Nc1c(Cl)cccc1Cl;NCC(O)(C(F)(F)F)C(F)(F)F;R56,1

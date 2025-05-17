@@ -1,7 +1,8 @@
 import pathlib
+import os
 
 import click
-from parallel import run_parallel_sampling
+from .parallel import run_parallel_sampling
 
 from synformer.chem.mol import Molecule, read_mol_file
 
@@ -27,6 +28,37 @@ def _input_mols_option(p):
 @click.option("--result-qsize", type=int, default=0)
 @click.option("--time-limit", type=int, default=180)
 @click.option("--dont-sort", is_flag=True)
+@click.option("--use-desert", is_flag=True, help="Use DESERT encoder for molecule generation")
+@click.option(
+    "--desert-model-path",
+    type=click.Path(exists=True, path_type=pathlib.Path),
+    help="Path to the DESERT model file",
+)
+@click.option(
+    "--vocab-path",
+    type=click.Path(exists=True, path_type=pathlib.Path),
+    help="Path to the vocabulary file for DESERT",
+)
+@click.option(
+    "--smiles-checkpoint-path",
+    type=click.Path(exists=True, path_type=pathlib.Path),
+    help="Path to the pretrained SMILES checkpoint for the decoder",
+)
+@click.option(
+    "--shape-patches-path",
+    type=click.Path(exists=True, path_type=pathlib.Path),
+    help="Path to the shape patches file for DESERT",
+)
+@click.option(
+    "--receptor-path",
+    type=click.Path(exists=True, path_type=pathlib.Path),
+    help="Path to the receptor PDBQT file for docking",
+)
+@click.option(
+    "--receptor-center",
+    type=(float, float, float),
+    help="Center coordinates (x,y,z) for docking box",
+)
 def main(
     input: list[Molecule],
     output: pathlib.Path,
@@ -39,7 +71,25 @@ def main(
     result_qsize: int,
     time_limit: int,
     dont_sort: bool,
+    use_desert: bool,
+    desert_model_path: pathlib.Path,
+    vocab_path: pathlib.Path,
+    smiles_checkpoint_path: pathlib.Path,
+    shape_patches_path: pathlib.Path,
+    receptor_path: pathlib.Path,
+    receptor_center: tuple[float, float, float],
 ):
+    # Validate DESERT options
+    if use_desert:
+        if not desert_model_path:
+            raise ValueError("--desert-model-path must be provided when --use-desert is set")
+        if not vocab_path:
+            raise ValueError("--vocab-path must be provided when --use-desert is set")
+        if not smiles_checkpoint_path:
+            raise ValueError("--smiles-checkpoint-path must be provided when --use-desert is set")
+        if not shape_patches_path:
+            print("Warning: --shape-patches-path not provided, using default shape patches")
+    
     run_parallel_sampling(
         input=input,
         output=output,
@@ -52,6 +102,13 @@ def main(
         result_qsize=result_qsize,
         time_limit=time_limit,
         sort_by_scores=not dont_sort,
+        use_desert=use_desert,
+        desert_model_path=desert_model_path,
+        vocab_path=vocab_path,
+        smiles_checkpoint_path=smiles_checkpoint_path,
+        shape_patches_path=shape_patches_path,
+        receptor_path=receptor_path,
+        receptor_center=receptor_center,
     )
 
 

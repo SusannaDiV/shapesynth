@@ -5,6 +5,15 @@ import pandas as pd
 from synformer.chem.mol import Molecule
 from synformer.sampler.analog.parallel import run_parallel_sampling_return_smiles
 
+import warnings
+from rdkit import RDLogger
+
+# Disable RDKit warnings
+RDLogger.DisableLog('rdApp.*')
+
+# Read SMILES from CSV
+
+
 
 def decode_leads():
     # JNK3 leads
@@ -37,7 +46,7 @@ def decode_leads():
 
     input = [Molecule(s) for s in smiles_list]
 
-    model_path = "logs/default/epoch=144-step=725000.ckpt"
+    model_path = "/home/luost_local/sdivita/synformer/data/trained_weights/sf_ed_default.ckpt "
 
     t0 = time()
 
@@ -67,7 +76,7 @@ def decode_unsynth():
 
     input = [Molecule(s) for s in smiles_list]
 
-    model_path = "logs/default/epoch=144-step=725000.ckpt"
+    model_path = "/home/luost_local/sdivita/synformer/data/trained_weights/sf_ed_default.ckpt "
 
     t0 = time()
 
@@ -90,12 +99,16 @@ def decode_unsynth():
 
 
 def decode_sbdd():
-    df = pd.read_csv("/home/whgao/synformer_dev/experiments/sbdd/pocket2mol.csv")
+    
+    df = pd.read_csv('experiments/sbdd/one.csv', header=None)#, names=['target', 'smiles', 'score'])
+    smiles_list = df.tolist()
+
+    
     smiles_list = df.smiles.to_list()
 
     input = [Molecule(s) for s in smiles_list]
 
-    model_path = "logs/default/epoch=144-step=725000.ckpt"
+    model_path = "/home/luost_local/sdivita/synformer/data/trained_weights/sf_ed_default.ckpt"
 
     t0 = time()
 
@@ -114,16 +127,16 @@ def decode_sbdd():
 
     print(f"Time: {time() - t0:.2f} s")
 
-    result_df.to_csv("sbdd_decode.csv", index=False)
+    result_df.to_csv("/home/luost_local/sdivita/synformer/experiments/original_decode_sbdd_results.csv", index=False)
 
 
 def decode_hits():
-    df = pd.read_csv("/home/whgao/synformer_dev/experiments/processed_data/active_pubchem.csv")
-    smiles_list = df.ligand_smiles.to_list()
+    df = pd.read_csv("/home/luost_local/sdivita/synformer/experiments/sbdd/one.csv")
+    smiles_list = df.SMILES.to_list()
 
     input = [Molecule(s) for s in smiles_list]
 
-    model_path = "logs/default/epoch=144-step=725000.ckpt"
+    model_path = "/home/luost_local/sdivita/synformer/data/trained_weights/sf_ed_default.ckpt"
 
     t0 = time()
 
@@ -132,8 +145,8 @@ def decode_hits():
         model_path=model_path,
         search_width=100,
         exhaustiveness=100,
-        num_gpus=-1,
-        num_workers_per_gpu=1,
+        num_gpus=4,
+        num_workers_per_gpu=2,
         task_qsize=0,
         result_qsize=0,
         time_limit=1800,
@@ -142,7 +155,7 @@ def decode_hits():
 
     print(f"Time: {time() - t0:.2f} s")
 
-    result_df.to_csv("hits_decode.csv", index=False)
+    result_df.to_csv("/home/luost_local/sdivita/synformer/experiments/sbdd/hits_decode.csv", index=False)
 
 
 if __name__ == "__main__":
