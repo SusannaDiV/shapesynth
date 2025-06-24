@@ -1,0 +1,7 @@
+Metadata-Version: 2.4
+Name: synformer
+Version: 0.1.3
+Summary: SynFormer: Generative Model for Synthesizable Molecule Generation
+Author-email: Wenhao Gao <gaowh19@gmail.com>, Shitong Luo <luost26@gmail.com>, "Connor W. Coley" <ccoley@mit.edu>
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown

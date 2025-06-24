@@ -1,0 +1,2 @@
+target,smiles,qed_score,docking_score,score,synthesis,num_steps
+c1ccccc1,C#CC(=O)N1CCN(C)CCN(C(=O)c2ccc(-c3ccc(F)cc3)cc2)CC1.C#CC(=O)O,0.0,N/A (Failed),0.0,CN1CCNCCNCC1;O=C(O)c1ccc(-c2ccc(F)cc2)cc1;R8;C#CC(=O)OC(=O)C#C;R44,2

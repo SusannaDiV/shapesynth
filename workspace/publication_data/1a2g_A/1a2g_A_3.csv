@@ -1,0 +1,15 @@
+target,smiles,qed_score,docking_score,score,synthesis,num_steps
+c1ccccc1,Nc1ccccc1NC(=O)C1(F)CC(NC(=O)OCC2c3ccccc3-c3ccccc32)C1,0.500,-11.400,0.950,Nc1ccccc1N;O=C(NC1CC(F)(C(=O)O)C1)OCC1c2ccccc2-c2ccccc21;R8,1
+c1ccccc1,O=C(NC1CC(F)(c2nc3ccccc3N2)C1)OCC1c2ccccc2-c2ccccc21,0.456,-11.100,0.925,Nc1ccccc1N;O=C(NC1CC(F)(C(=O)O)C1)OCC1c2ccccc2-c2ccccc21;R19,1
+c1ccccc1,Nc1nnc(NC(=O)Nc2ccc(Cc3ccc(N=C=O)cc3)cc2)s1,0.472,-10.200,0.850,Nc1nnc(N)s1;O=C=Nc1ccc(Cc2ccc(N=C=O)cc2)cc1;R106,1
+c1ccccc1,CCCn1cc(Nc2ncnc3c2ncn3-c2nnc(N)[nH]2)cn1,0.490,-9.700,0.808,Nc1nnc(N)[nH]1;CCCn1cc(N)cn1;R66,1
+c1ccccc1,Nc1cc(Nc2cccc(F)c2C2CC(=O)OC2=O)ccn1,0.666,-9.100,0.758,Nc1ccnc(N)c1;O=C1CC(c2c(F)cccc2Cl)C(=O)O1;R9,1
+c1ccccc1,Nc1cc(Nc2cccc(F)c2C2CC(=O)OC2=O)ccn1,0.666,-9.000,0.750,Nc1ccnc(N)c1;O=C1CC(c2c(F)cccc2Cl)C(=O)O1;R103,1
+c1ccccc1,Cc1ccc(NC(=O)Nc2nnc(N)s2)cc1,0.759,-8.900,0.742,Nc1nnc(N)s1;Cc1ccc(N=C=O)cc1;R106,1
+c1ccccc1,Nc1ccnc(NC(=O)C(CC(=O)O)c2c(F)cccc2Cl)c1,0.777,-8.800,0.733,Nc1ccnc(N)c1;O=C1CC(c2c(F)cccc2Cl)C(=O)O1;R44,1
+c1ccccc1,Nc1nnc(NC(=O)Nc2ccc(N=C=O)cc2)s1,0.582,-8.700,0.725,Nc1nnc(N)s1;O=C=Nc1ccc(N=C=O)cc1;R106,1
+c1ccccc1,Cc1cc(C(O)c2ccc(Br)nn2)c(C)cc1C=O,0.883,-8.700,0.725,Brc1ccc(Br)nn1;Cc1cc(C=O)c(C)cc1C=O;R98,1
+c1ccccc1,Clc1ccc(COc2ccc(I)nn2)c(Cl)c1,0.756,-8.600,0.717,Ic1ccc(I)nn1;OCc1ccc(Cl)cc1Cl;R56,1
+c1ccccc1,Nc1nnc(NC(=O)Nc2ccc(Br)cc2)s1,0.794,-8.600,0.717,Nc1nnc(N)s1;O=C=Nc1ccc(Br)cc1;R106,1
+c1ccccc1,Nc1nnc(NC(=O)Nc2ccc(Cl)cc2)s1,0.780,-8.500,0.708,Nc1nnc(N)s1;O=C=Nc1ccc(Cl)cc1;R106,1
+c1ccccc1,Nc1nnc(NC(=O)Nc2ccc(I)cc2)s1,0.716,-8.500,0.708,Nc1nnc(N)s1;O=C=Nc1ccc(I)cc1;R106,1

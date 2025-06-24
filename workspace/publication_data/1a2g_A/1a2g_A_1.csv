@@ -1,0 +1,2 @@
+target,smiles,qed_score,docking_score,score,synthesis,num_steps
+c1ccccc1,CC1(C)CC(=O)NCC1NCCCN1CCc2ccccc21,0.817,-8.900,0.742,CC1(C)CC(=O)NCC1=O;NCCCN1CCc2ccccc21;R43,1

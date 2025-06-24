@@ -1,0 +1,7 @@
+target,smiles,qed_score,docking_score,score,synthesis,num_steps
+c1ccccc1,COC(=O)C1(Cn2cnc3c(Nc4ccc(O)cc4O)ncnc32)CCOCC1,0.547,-9.400,0.783,Nc1ccc(O)cc1O;COC(=O)C1(CN)CCOCC1;R66,1
+c1ccccc1,COC(=O)C1(n2cnc3c(Nc4ccc(O)cc4O)ncnc32)CCOCC1,0.570,-9.300,0.775,Nc1ccc(O)cc1O;COC(=O)C1(N)CCOCC1;R66,1
+c1ccccc1,COC(=O)C12CCC(C(=O)Nc3ccc(O)cc3O)(CC1)CC2,0.452,-8.600,0.717,Nc1ccc(O)cc1O;COC(=O)C12CCC(C(=O)OC)(CC1)CC2;R49,1
+c1ccccc1,NC1(c2nc3ccc(O)cc3O2)CCOCC1,0.781,-8.500,0.708,Nc1ccc(O)cc1O;COC(=O)C1(N)CCOCC1;R19,1
+c1ccccc1,COC(=O)C12CCC(c3nc4ccc(O)cc4O3)(CC1)CC2,0.862,-8.500,0.708,Nc1ccc(O)cc1O;COC(=O)C12CCC(C(=O)OC)(CC1)CC2;R19,1
+c1ccccc1,Oc1ccc2nc(C3(O)CCOCC3)Oc2c1,0.784,-8.400,0.700,Nc1ccc(O)cc1O;COC(=O)C1(O)CCOCC1;R19,1

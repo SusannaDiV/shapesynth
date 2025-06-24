@@ -1,0 +1,22 @@
+Metadata-Version: 2.1
+Name: unicore
+Version: 0.0.1
+Summary: DP Technology's Core AI Framework
+Home-page: https://github.com/dptech-corp/unicore
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+License-File: LICENSE
+Requires-Dist: numpy; python_version >= "3.7"
+Requires-Dist: lmdb
+Requires-Dist: tqdm
+Requires-Dist: torch>=2.0.0
+Requires-Dist: ml_collections
+Requires-Dist: scipy
+Requires-Dist: tensorboardX
+Requires-Dist: tokenizers
+Requires-Dist: wandb
