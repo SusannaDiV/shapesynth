@@ -1,0 +1,11 @@
+lmdb
+tqdm
+torch>=2.0.0
+ml_collections
+scipy
+tensorboardX
+tokenizers
+wandb
+
+[:python_version >= "3.7"]
+numpy

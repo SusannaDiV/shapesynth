@@ -1,0 +1,2 @@
+[console_scripts]
+unicore-train = unicore_cli.train:cli_main
